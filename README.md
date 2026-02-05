@@ -6,7 +6,7 @@ A practical guide to the string types you encounter when writing R packages that
 
 You are working at the intersection of four different memory management philosophies, each with its own idea of who owns a string, whether it can be modified, and how long a pointer to it remains valid.
 
-- **C**: a string is an address. Ownership is a gentleman's agreement.
+- **C**: a string is an address. Ownership is only via loose agreement.
 - **C++ standard library**: a string is a value type. Copy by default, RAII cleanup.
 - **R's C API**: strings are garbage-collected, interned, immutable objects. The GC can move things.
 - **GDAL**: strings are C strings, but with its own allocation conventions (CSL lists, internal buffers, caller-owns vs callee-owns).
