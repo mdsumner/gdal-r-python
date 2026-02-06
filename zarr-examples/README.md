@@ -12,6 +12,7 @@ https://github.com/mdsumner/zarris
 
 https://github.com/mdsumner/zerozarr
 
+https://github.com/hypertidy/cmemsarco
 
 ## Attempted Zarr projects 
 
@@ -32,6 +33,8 @@ https://github.com/mdsumner/pymdim
 https://github.com/mdsumner/mdim
 
 https://github.com/mdsumner/arrayrefs
+
+https://github.com/hypertidy/zarrr
 
 ### Sorta related
 
