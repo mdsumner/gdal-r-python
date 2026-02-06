@@ -187,3 +187,8 @@ just SSH in and run:
   server versions is the bigger concern.
 - If "Discovering interpreters" gets stuck, try: kill orphans → clean sockets →
   reload window.
+- **Rebooting the VM** kills all orphaned processes (they are not registered as
+  systemd services), and clears sockets in `/run/user/` (which is a tmpfs). However,
+  it does **not** remove old server versions in `~/.positron-server/bin/` or stale
+  files in `/tmp` (unless your distro's `tmp.conf` or `tmpfiles.d` is configured to
+  clean `/tmp` on boot). So a reboot handles the process side but not the disk side.
