@@ -187,6 +187,11 @@ just SSH in and run:
   server versions is the bigger concern.
 - If "Discovering interpreters" gets stuck, try: kill orphans → clean sockets →
   reload window.
+- **Never open `~` (home directory) as your workspace.** The file watcher will
+  attempt to recursively index everything under `~`, causing the extension host and
+  file watcher to thrash at 100% CPU. This blocks interpreter discovery and makes
+  the console unresponsive. Always open a specific project directory instead.
+  If you need to do system-level work, use a plain SSH terminal session.
 - **Rebooting the VM** kills all orphaned processes (they are not registered as
   systemd services), and clears sockets in `/run/user/` (which is a tmpfs). However,
   it does **not** remove old server versions in `~/.positron-server/bin/` or stale
