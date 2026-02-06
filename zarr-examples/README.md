@@ -31,6 +31,8 @@ https://github.com/mdsumner/pymdim
 
 https://github.com/mdsumner/mdim
 
+https://github.com/mdsumner/arrayrefs
+
 ### Sorta related
 
 https://github.com/mdsumner/robstore
