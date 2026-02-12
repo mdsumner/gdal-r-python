@@ -1,5 +1,8 @@
 # How exactextract computes exact coverage fractions
 
+Generated as a prompt to a potential refactor of gridburn to be folded in to a final package (fasterize, controlledburn, gridburn ->> denseburn): https://github.com/mdsumner/gridburn/blob/main/inst/docs-design/denseburn-refactor-design.md
+
+
 This document traces the path a polygon takes through the exactextract algorithm as vendored in the [gridburn](https://github.com/hypertidy/gridburn) R package. The goal is to understand exactly where dense matrices are allocated, how polygon rings (including holes) are processed, and why memory usage is proportional to the polygon's bounding box rather than the full raster grid.
 
 The exactextract algorithm was written by Daniel Baston and is part of the [exactextract](https://github.com/isciences/exactextract) project. gridburn vendors 27 C++ source files from exactextract's core, patching only the GEOS header includes to use [libgeos](https://github.com/paleolimbot/libgeos) instead of a system GEOS installation.
