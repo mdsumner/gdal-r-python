@@ -533,4 +533,4 @@ Last full run (February 2026):
 - **[CopernicusMarine](https://github.com/pepijn-devries/CopernicusMarine)** — R interface for CMEMS (WMTS, native files, subsetting API)
 - **[copernicusmarine](https://pypi.org/project/copernicusmarine/)** — Official Python toolbox for Copernicus Marine
 - **[ZarrDatasets.jl](https://github.com/JuliaGeo/ZarrDatasets.jl)** — Julia equivalent with clear STAC examples
-- **[vapour](https://github.com/hypertidy/vapour)** — Lightweight GDAL bindings for R (used by cmemsarco)
+
