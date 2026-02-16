@@ -17,6 +17,39 @@
 | numcodecs | latest | Codec registry for v2 metadata |
 | imagecodecs | latest | Pulled in by virtual-tiff |
 
+### Installation
+
+The extras specifier alone did not pull all transitive deps in testing.
+The full belt-and-braces install line:
+
+```bash
+uv pip install "virtualizarr[tiff, kerchunk]" virtual-tiff obstore zarr \
+    xarray numpy numcodecs imagecodecs fastparquet kerchunk pandas \
+    --system --break-system-packages
+```
+
+### Docker setup (verified, from a base Python 3.12 image)
+
+```bash
+docker run --rm -it -v $(pwd)/output:/output python:3.12 bash
+
+# Inside the container:
+apt-get update && apt-get install -y curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
+bash  # reload PATH for uv
+
+uv pip install "virtualizarr[tiff, kerchunk]" virtual-tiff obstore zarr \
+    xarray numpy numcodecs imagecodecs fastparquet kerchunk pandas \
+    --system --break-system-packages
+
+# Copy script in or mount it, then:
+python virtualize_ghrsst.py -w 16
+```
+
+A pangeo-based Docker image (e.g. `pangeo/pangeo-notebook`) would have most
+of these deps pre-installed and is a more practical starting point for
+production runs.
+
 ---
 
 ## 1. Overview
@@ -37,8 +70,18 @@ Performance on a 30-day test (June 2002):
 - Parquet write: 1.1s
 - Total: ~6.1s
 
-Projected full-catalogue (~8600 files, 2002–present) at 8 workers: ~25 minutes.
-At 16–32 workers the I/O-bound metadata reads should scale near-linearly.
+Full catalogue (8660 files, 2002–2025, 28 threads):
+
+- Virtualization: 396.6s (0.05s/file effective)
+- Parquet write: 356.5s
+- Total: 788.5s (~13 minutes)
+
+The parquet serialization is the bottleneck at scale. The kerchunk parquet
+writer serializes ~22 million chunk references (8660 time steps × ~2556
+chunks per 17999×36000 image at 512×512 tiles) through Python-level row
+construction. A flat columnar write of the same data via Arrow or Polars
+would complete in seconds. This is a known structural limitation of the
+kerchunk parquet format (see Section 7.3).
 
 
 ## 2. The dataset
@@ -325,6 +368,32 @@ This bypasses VirtualiZarr, xarray, and the Zarr v3 codec pipeline entirely.
 The tradeoff is losing VirtualiZarr's xarray-based combination logic and
 Icechunk integration, but for a dataset with uniform structure (identical
 grid, single variable, systematic filenames) this logic is trivial.
+
+### Flat parquet reference table
+
+The kerchunk parquet format stores one row per chunk keyed by Zarr path
+strings (e.g. `"analysed_sst/0.1.2"`), partitioned by variable name.
+For the GHRSST catalogue this produces ~22 million rows serialized through
+Python-level row construction, taking ~6 minutes to write.
+
+A flat columnar table with integer-indexed columns would be both faster to
+write and more practical to query:
+
+```
+time_idx | y_chunk | x_chunk | path | offset | length
+0        | 0       | 0       | s3://...2002/06/01/...tif | 8     | 524288
+0        | 0       | 1       | s3://...2002/06/01/...tif | 524296| 524288
+...
+```
+
+This is writable in seconds via Arrow or Polars, supports predicate pushdown
+for efficient subsetting (e.g. all chunks for a single time step), and is
+readable from any language with a Parquet/Arrow binding. Reconstructing the
+Zarr key structure from integer indices is trivial. A sidecar `.zarray` JSON
+provides the array metadata.
+
+This format does not exist as a specification, but the data content is
+identical to what kerchunk parquet stores — only the serialization differs.
 
 
 ## 8. Upstream issues worth reporting
