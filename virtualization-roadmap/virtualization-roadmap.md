@@ -2,6 +2,9 @@
 
 *Working roadmap, February 2026*
 
+Parent chat is here: https://claude.ai/chat/96a8e0fb-60bb-427f-b5ea-c5ab88283580
+
+
 ---
 
 ## What exists right now
