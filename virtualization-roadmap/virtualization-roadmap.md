@@ -1,4 +1,4 @@
-# Virtualisation Without the Python Stack — What We Have and Where We're Going
+# Virtualisation Without the Python Stack 
 
 *Working roadmap, February 2026*
 
