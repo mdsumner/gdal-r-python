@@ -35,6 +35,18 @@ Two values, always present:
 
 That's it. No resolution field, no CRS, no data, no cell values.
 
+### Alignment enforced
+
+Dimension is canonical, immutable at first input  as is extent. (Caveat for actual numeric limitations)
+
+Resolution is derived from extent subdivided by dimension. 
+
+Resolution as input is not compatible as (dimension, resolution) - incomplete specification needs two offset anchors. Helpers should exist for various inputs, affine, (extent,resolution) but always
+something is modified - extent or resolution have to snap. 
+
+Crop and Expand are conceptually different, but are complementary and symmetric, and can be no-op. If we have relative crop `* .9` or `- 10` we also have `/ .9` or `+10` relative expand (terra does this, but I'm not sure we'd choose the same logic and I'm not fully across it, needs discussion). I don't think we have a free-floating extent, it's always bound to a discretization (dimension), and can be 1,1. 
+
+
 ### Default extent
 
 ```r
