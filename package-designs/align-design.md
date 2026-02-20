@@ -2,6 +2,8 @@
 
 working labels: align, step, vast
 
+working naming: we are stealing names from terra and vaster and not worrying about that yet
+
 ## What it is
 
 align is a pure R package that provides a single core object: a grid specification defined by dimension and extent. Everything else — resolution, coordinates, cell indices, row/column mappings — is derived on demand by arithmetic.
@@ -36,6 +38,8 @@ Two values, always present:
 That's it. No resolution field, no CRS, no data, no cell values.
 
 ### Alignment enforced
+
+(see Aliases below)
 
 Dimension is canonical, immutable at first input  as is extent. (Caveat for actual numeric limitations)
 
@@ -115,6 +119,10 @@ expand(g, extent)
 
 expand + crop are symmetric: `crop(expand(g, e), g$extent)` returns `g`.
 
+### Buffer
+
+'buffer' with positive and negative behaviour might be a better scheme than crop and expand. 
+
 ### Resize
 
 Change resolution by an integer factor. The new lattice nests exactly within the old one.
@@ -162,11 +170,13 @@ This is pure index arithmetic — how many tiles fit, what are their extents. No
 
 - Store raster values
 - Read or write files
-- Handle CRS or projection
+- Handle CRS or projection (we at some point store it - 'carry' - I think that was a mistake for terra, to not)
 - Do geometry operations
 - Allocate large arrays
-
+- n-dimensions
+  
 align is six numbers and arithmetic on them. It validates alignment and computes indices. That's the entire scope.
+
 
 ## Type and class
 
@@ -257,6 +267,12 @@ vaster currently implements cell-from-xy, extent alignment, dimension fitting. T
 ### grout
 
 grout handles tile schemes and validates spatial alignment for cloud-native raster workflows. Its tile partitioning logic (`tiles()`) belongs in or delegates to align. grout adds the I/O coordination — which tiles exist, what format, where.
+
+## tripEstimation / SGAT 
+
+These packages have versions or vestiges of child-parent window scheme designed in 2003, called "Pimage" in tripEstimation. (https://figshare.utas.edu.au/ndownloader/files/40906604 Chapter 5). 
+
+This project will be a perfect fit for that application, [SGATII](https://github.com/SWotherspoon/SGATII) is the successor project. 
 
 ### DuckDB / arrow workflows
 
