@@ -1,0 +1,346 @@
+# Arrow Lesson 1: The Building Blocks
+
+## The mental model
+
+Arrow is a columnar memory format — a specification for how typed data lives in memory. Everything else (Parquet I/O, compute kernels, Flight RPC, the C Data Interface) is built on top of this foundation. The key insight: Arrow doesn't copy data between systems that speak Arrow. When GDAL hands you an ArrowArrayStream, or DuckDB returns a result, or you pass a table to polars — it's the same bytes in memory.
+
+The building blocks, bottom to top:
+
+```
+DataType   →  what kind of thing (int32, utf8, list<float64>, ...)
+Field      →  a named, typed slot (name + DataType + nullable flag)
+Schema     →  ordered collection of Fields (the column spec)
+Array      →  one contiguous typed column of values (one chunk)
+ChunkedArray → multiple Arrays concatenated logically (same type)
+RecordBatch  → Schema + one Array per field (one chunk of a table)
+Table        → Schema + one ChunkedArray per field (the whole table)
+```
+
+In R terms: a `data.frame` is like a Table where each column is a ChunkedArray. A RecordBatch is like a data.frame that's guaranteed to be a single contiguous block.
+
+## Setup
+
+```r
+library(arrow)
+
+# Check what you've got
+arrow_info()
+```
+
+## Exercise 1: DataTypes — the type system
+
+Arrow's type system is richer than R's. R has `logical`, `integer`, `double`, `character`, `complex`, `raw`, and that's about it. Arrow distinguishes signed/unsigned integers at multiple widths, has proper timestamps with timezone, has nested types (list, struct, map), and dictionary encoding as a first-class type.
+
+```r
+# Primitive types
+int8()
+int16()
+int32()    # R's integer
+int64()    # R doesn't have this natively — uses bit64 or double
+uint8()    # no unsigned in R at all
+float32()
+float64()  # R's double
+utf8()     # R's character (but variable-length, not fixed)
+boolean()
+binary()   # closest to R's raw
+
+# Temporal types — much richer than R's POSIXct
+timestamp("us", timezone = "UTC")  # microsecond precision, tz-aware
+timestamp("ns")                     # nanosecond, tz-naive
+date32()                            # days since epoch (like R's Date)
+time64("ns")                        # time-of-day only
+duration("s")                       # like difftime
+
+# Nested types — this is where Arrow goes beyond R
+list_of(float64())                  # each cell is a variable-length list
+large_list_of(float64())            # same but 64-bit offsets
+fixed_size_list_of(float64(), 3L)   # each cell has exactly 3 floats
+struct(x = float64(), y = float64()) # each cell is a named record
+
+# Dictionary — like R's factor
+dictionary(int32(), utf8())
+```
+
+**Try this:**
+```r
+# What type does Arrow infer from R vectors?
+Array$create(1:10)$type
+Array$create(c(1.5, 2.5))$type
+Array$create(c("a", "b", "c"))$type
+Array$create(Sys.time())$type
+Array$create(as.Date("2024-01-01"))$type
+Array$create(factor(c("low", "med", "high")))$type
+
+# The factor one is interesting — it becomes a dictionary type
+a <- Array$create(factor(c("low", "med", "high", "low", "low")))
+a$type             # dictionary<values=string, indices=int8>
+a$dictionary()     # the unique values
+a$indices()        # the integer codes
+```
+
+**Key insight:** Arrow's type system is the contract. When two systems exchange Arrow data, the schema tells the receiver exactly what it's getting — no guessing, no implicit conversion. This is why GDAL's ArrowStream output includes a schema.
+
+## Exercise 2: Arrays — one typed column
+
+An Array is a contiguous block of typed values. It's the atomic unit.
+
+```r
+# Create from R
+a <- Array$create(c(1L, 2L, NA, 4L, 5L))
+a
+a$type
+a$length()
+a$null_count
+a$is_valid     # boolean array: which elements are non-null
+
+# Nulls are tracked by a separate validity bitmap, not sentinel values
+# This is different from R where NA is a special value inside the vector
+
+# Slicing — zero-copy, just a view
+b <- a$Slice(1, 3)   # offset=1, length=3 → [2, NA, 4]
+b
+
+# Cast between types
+a_dbl <- a$cast(float64())
+a_dbl$type
+
+# String arrays
+s <- Array$create(c("hello", "world", NA, "arrow"))
+s$type    # utf8
+s$length()
+s$null_count
+```
+
+**Try this:**
+```r
+# Create a larger array and examine its buffers
+big <- Array$create(rnorm(1000))
+big$type
+big$length()
+
+# You can peek at the raw buffers — this IS the Arrow memory layout
+# Buffer 0: validity bitmap (null tracking)
+# Buffer 1: the actual data
+big$buffers()
+big$buffers()[[2]]$size   # 1000 * 8 bytes = 8000 for float64
+```
+
+**Key insight:** Arrays own their buffers. The data layout is defined by the spec — a float64 Array is literally a contiguous block of 8-byte IEEE 754 doubles with a separate validity bitmap. No boxing, no pointers-to-pointers. This is why zero-copy works.
+
+## Exercise 3: Fields and Schemas — the contract
+
+```r
+# A Field is a named typed slot
+f1 <- field("longitude", float64())
+f2 <- field("latitude", float64())
+f3 <- field("sst", float32(), nullable = TRUE)
+f4 <- field("time", timestamp("us", timezone = "UTC"))
+f5 <- field("quality_flag", int8())
+
+f1
+f1$name
+f1$type
+f1$nullable
+
+# A Schema is an ordered list of Fields
+sch <- schema(
+  longitude = float64(),
+  latitude = float64(),
+  sst = float32(),
+  time = timestamp("us", timezone = "UTC"),
+  quality_flag = int8()
+)
+
+sch
+sch$num_fields
+sch$names
+sch$GetFieldByName("sst")
+
+# Schemas can carry key-value metadata
+sch2 <- sch$WithMetadata(list(
+  source = "MUR SST v4.1",
+  crs = "EPSG:4326"
+))
+sch2$metadata
+```
+
+**Try this:**
+```r
+# What schema does Arrow infer from a data.frame?
+df <- data.frame(
+  x = 1:5,
+  y = rnorm(5),
+  name = letters[1:5],
+  when = Sys.time() + 1:5,
+  flag = factor(c("a", "b", "a", "b", "a"))
+)
+
+inferred <- schema(df)
+inferred
+
+# Compare: what would you want vs what you get?
+# Note how character → utf8, factor → dictionary, POSIXct → timestamp
+```
+
+## Exercise 4: RecordBatch — one chunk of a table
+
+A RecordBatch is a Schema + one Array per column, all the same length. It's the unit of data transfer in Arrow IPC and the unit that GDAL's ArrowStream gives you.
+
+```r
+# Create from R data.frame
+rb <- record_batch(
+  lon = c(147.3, 147.4, 147.5),
+  lat = c(-42.8, -42.9, -43.0),
+  sst = c(12.5, 12.3, NA),
+  time = as.POSIXct("2024-06-15 00:00:00", tz = "UTC") + c(0, 0, 0)
+)
+
+rb
+rb$schema
+rb$num_rows
+rb$num_columns
+
+# Access columns by name or index
+rb$column("sst")         # returns an Array
+rb$column(0L)            # 0-indexed! (Arrow convention, not R)
+
+# Slice rows — zero-copy
+rb$Slice(0, 2)           # first 2 rows
+
+# Convert back to R
+as.data.frame(rb)
+
+# This is what GDAL gives you via the ArrowStream interface:
+# a stream of RecordBatches, one at a time, with a shared schema
+```
+
+**Try this:**
+```r
+# Build a RecordBatch with explicit types (not inferred)
+rb2 <- record_batch(
+  id = Array$create(1:100, type = int32()),
+  value = Array$create(rnorm(100), type = float32()),  # note: float32, not 64
+  label = Array$create(sample(letters[1:5], 100, replace = TRUE),
+                       type = dictionary(int8(), utf8()))
+)
+
+rb2$schema
+rb2$column("value")$type    # float32 — you controlled the type
+rb2$column("label")$type    # dictionary<int8, utf8> — like a factor
+
+# Check the memory footprint
+# float32 uses half the memory of float64
+rb2$column("value")$buffers()[[2]]$size   # 100 * 4 = 400 bytes
+```
+
+## Exercise 5: Table — the whole thing
+
+A Table is the full dataset: Schema + one ChunkedArray per column. Each ChunkedArray can be made up of multiple Arrays (chunks), which is how you build up large datasets incrementally (e.g., reading Parquet row groups, or accumulating ArrowStream batches).
+
+```r
+# Create from data.frame
+tbl <- arrow_table(mtcars)
+tbl
+tbl$schema
+tbl$num_rows
+tbl$num_columns
+
+# Each column is a ChunkedArray
+tbl$column("mpg")
+tbl$column("mpg")$num_chunks
+tbl$column("mpg")$chunk(0)     # the underlying Array
+
+# A Table built from one data.frame has 1 chunk per column
+# But you can combine multiple RecordBatches:
+rb_a <- record_batch(x = 1:5, y = rnorm(5))
+rb_b <- record_batch(x = 6:10, y = rnorm(5))
+
+combined <- Table$create(!!!list(rb_a, rb_b))  # bang-bang-bang to splice
+combined
+combined$num_rows                        # 10
+combined$column("x")$num_chunks          # 2 — one chunk per batch
+
+# This is the key: chunks are NOT concatenated into one block.
+# The Table just holds references to the original memory.
+```
+
+**Try this:**
+```r
+# Round-trip through Parquet
+tf <- tempfile(fileext = ".parquet")
+write_parquet(tbl, tf)
+
+# Read it back
+tbl2 <- read_parquet(tf, as_data_frame = FALSE)  # keep as Arrow Table!
+tbl2
+tbl2$column("mpg")$num_chunks  # might be 1 (Parquet reads as single batch)
+
+# Now try with a bigger dataset and row groups
+tf2 <- tempfile(fileext = ".parquet")
+big_df <- data.frame(
+  x = rnorm(100000),
+  g = sample(letters[1:4], 100000, replace = TRUE)
+)
+write_parquet(arrow_table(big_df), tf2,
+              chunk_size = 25000)  # force 4 row groups
+
+tbl3 <- read_parquet(tf2, as_data_frame = FALSE)
+tbl3$column("x")$num_chunks   # should be 4
+
+# Each chunk came from a Parquet row group — the chunked structure is real
+```
+
+## Exercise 6: Connecting to GDAL ArrowStream
+
+This is where it gets concrete for you. When GDAL reads a vector source with the ArrowStream interface, it hands you RecordBatches one at a time — exactly the pattern above.
+
+```r
+# If you have vapour installed, this is the thin-wrapper approach:
+# vapour::vapour_read_fields_arrow() returns an ArrowArrayStream
+#
+# The stream has:
+#   - a Schema (column names + types)
+#   - a sequence of RecordBatches
+#
+# You can consume it into a Table:
+
+# Pseudocode for what happens under the hood:
+# stream <- gdal_get_arrow_stream(dsn, layer)
+# schema <- stream$get_schema()
+# batches <- list()
+# while (!is.null(batch <- stream$get_next())) {
+#   batches <- c(batches, list(batch))
+# }
+# table <- Table$create(!!!batches)
+
+# With sf, the arrow interface is:
+# read_sf(dsn) uses ArrowStream under the hood now (sf >= 1.0-14)
+# or explicitly:
+# st_read_arrow(dsn)
+```
+
+**Key insight for your work:** The ArrowStream from GDAL gives you RecordBatches whose schema matches the OGR layer's field definitions. Geometry comes as a binary (WKB) column. The schema IS the metadata — field names, types, nullability — carried alongside the data with no ambiguity.
+
+## Summary: The hierarchy
+
+```
+DataType           what kind of data
+   ↓
+Field              named + typed + nullable
+   ↓
+Schema             ordered Fields + metadata
+   ↓
+Array              one typed contiguous column
+   ↓
+ChunkedArray       multiple Arrays, same type
+   ↓
+RecordBatch        Schema + Arrays (one chunk, fixed length)
+   ↓
+Table              Schema + ChunkedArrays (multiple chunks)
+```
+
+Everything fits together: a Table is just a Schema plus ChunkedArrays. A ChunkedArray is just Arrays glued together logically. An Array is just a typed buffer. The Schema tells you how to interpret the bytes.
+
+## Next lesson
+
+Lesson 2 will cover the **C Data Interface and nanoarrow** — the zero-copy handoff mechanism, how GDAL's ArrowStream actually works at the C level, and how to use nanoarrow in R to work with Arrow data without the full arrow package.
