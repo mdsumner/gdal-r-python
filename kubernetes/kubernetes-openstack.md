@@ -6,7 +6,7 @@ All lessons from two build cycles incorporated. Rebuild time: ~30 minutes.
 
 ## Step 0: Admin VM
 
-From Horizon dashboard:
+From openstack dashboard:
 
 1. Create a keypair (Compute → Key Pairs → Create) — download the `.pem` immediately
 2. Launch a small instance (2GB RAM is plenty), Ubuntu 24.04, attach the keypair
@@ -19,19 +19,19 @@ chmod 600 ~/.ssh/<your-key>.pem
 
 ssh -i ~/.ssh/<your-key>.pem ubuntu@<admin-ip>
 
-# First thing: set a password so you can use the Horizon console if locked out
+# First thing: set a password so you can use the openstack vm console if locked out
 sudo passwd ubuntu
 
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3-pip python3-openstackclient
 ```
 
-Download your OpenStack RC file from Horizon (Project → API Access → Download
+Download your OpenStack RC file from openstack (Project → API Access → Download
 OpenStack RC File v3). Copy it to the admin VM and source it:
 
 ```bash
 source ~/openrc.sh
-# Enter your Horizon password when prompted (available from Settings->User Settings can forever be renewed/forgotten til next time)
+# Enter your openstack password when prompted (available from Settings->User Settings can forever be renewed/forgotten til next time)
 ```
 
 ### Checkpoint 0
