@@ -31,7 +31,7 @@ OpenStack RC File v3). Copy it to the admin VM and source it:
 
 ```bash
 source ~/openrc.sh
-# Enter your Horizon password when prompted
+# Enter your Horizon password when prompted (available from Settings->User Settings can forever be renewed/forgotten til next time)
 ```
 
 ### Checkpoint 0
