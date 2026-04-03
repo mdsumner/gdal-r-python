@@ -34,6 +34,9 @@ EARTHDATA_USER=your_username
 EARTHDATA_PASS=your_password
 ```
 
+Note that these are arbitrary env names, just good to have on hand for official env name setting or general use that won't impact other contexts. I.e. you control this. 
+
+
 ### 3. Bearer Token (for GDAL header file approach)
 
 Generate a token via the URS API:
@@ -53,6 +56,8 @@ Write it to a header file for GDAL:
 ```bash
 echo "Authorization: Bearer $TOKEN" > ~/earthdata_header
 ```
+
+The same note about the arbitrary name of this file holds as with those above. GDAL also has GDAL_HTTP_HEADERS whose value is the content of this file. 
 
 **Tokens expire** (usually after ~90 days). If your header file stops working, regenerate.
 
