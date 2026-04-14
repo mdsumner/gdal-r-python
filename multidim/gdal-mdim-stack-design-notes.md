@@ -23,8 +23,8 @@ A reference implementation exists in R: <https://github.com/mdsumner/vrtstack>
 
 - Multi-band inputs where bands represent a proxy dimension (e.g. `--band-dimension`)
 - Spatial mosaicing within slices
-- Reprojection/resampling across inputs
-- Inputs with different extents (could be handled with nodata fill, but adds complexity)
+- Reprojection/resampling across inputs (see warper API and GTI driver)
+- Inputs with different extents 
 
 ## VRT XML Structure (Target Output)
 
