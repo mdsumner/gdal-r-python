@@ -2,6 +2,9 @@
 
 The scientific Python and R ecosystems have mature tools for opening large collections of remote files as logical N-dimensional arrays (xarray `open_mfdataset`, GDAL mdim mosaic, `terra::rast`, `stars::read_stars`), but no standard way to serialise the result of that parsing work. Every reopening repeats the same coordinate inference, dimension alignment, and CF decoding from scratch. Virtualisation — storing byte references rather than copied data — is the right primitive, but current implementations (VirtualiZarr, kerchunk) approach it narrowly as a kerchunk replacement rather than as a general serialisation format for logical array structure. COG is already a Zarr: its IFD table is a chunk manifest, tile offsets are byte references, and the pyramid is a multiscales spec — making this explicit costs nothing and unlocks the entire Zarr/xarray ecosystem for existing COG archives. Aligning GDAL mdim VRT, Zarr consolidated metadata, and xarray's internal representation around a shared serialisation primitive would close a genuine gap across the whole stack.
 
+See code example below. 
+
+
 ## Tasks
 
 1. **GDAL mdim mosaic → TIFF input + third-dimension helpers**
@@ -44,3 +47,102 @@ Ocean model reanalysis with depth dimension; tests third-dimension nomination in
 - GDAL mdim VRT — closest existing format but GDAL-dialect only, not portable to xarray without a translator
 - VirtualiZarr — targets the byte-reference layer but not the logical structure layer; parser implementations are Python-only and not reusable from R or GDAL
 - icechunk — versioned living store, v3-native; the right target for mutable/growing datasets once the reference layer is established
+- raadtools/sooty
+
+## Code
+
+```R
+library(rustycogs)
+library(dplyr)
+path <- "~/gebco2025/gebco.parquet/elevation/refs.0.parq"
+refs <- rustycogs::tiff_refs("https://projects.pawsey.org.au/idea-gebco-tif/GEBCO_2025.tif")
+
+levels_info <- refs |>
+  distinct(ifd, image_w, image_h) |>
+  arrange(ifd) |>
+  filter(ifd <= 6) |>   # drop the broken bottom level
+  mutate(
+    scale_x = 360 / image_w,
+    scale_y = 180 / image_h
+  )
+
+
+refs_ifd0 <- refs |> dplyr::filter(ifd == 0)
+
+library(arrow)
+
+n <- nrow(refs_ifd0)
+
+
+# create binary array with all nulls using a validity buffer
+raw_arr <- arrow::Array$create(
+  vector("list", n),
+  type = arrow::binary()
+)
+raw_arr$null_count  # should equal n
+raw_arr$IsNull(0L)
+
+tbl <- arrow::Table$create(
+  path   = arrow::Array$create(refs_ifd0$path, type = arrow::utf8()),
+  offset = arrow::Array$create(refs_ifd0$offset, type = arrow::int64()),
+  size   = arrow::Array$create(as.integer(refs_ifd0$length), type = arrow::int32()),
+  raw    = raw_arr
+)
+
+dir.create(dirname(path), recursive = T)
+arrow::write_parquet(tbl, path)
+
+zarray <- '{
+  "zarr_format": 2,
+  "shape": [43200, 86400],
+  "chunks": [512, 512],
+  "dtype": "<i2",
+  "compressor": null,
+  "fill_value": -32767,
+  "order": "C",
+  "filters": [
+    {"id": "delta", "dtype": "<i2", "astype": "<i2"},
+    {"id": "zlib", "level": 1}
+  ]
+}'
+zgroup <- '{"zarr_format": 2}'
+zmeta <- '{
+  "zarr_consolidated_format": 1,
+  "record_size": 100000,
+  "metadata": {
+    ".zgroup": {"zarr_format": 2},
+    "elevation/.zarray": {
+      "zarr_format": 2,
+      "shape": [43200, 86400],
+      "chunks": [512, 512],
+      "dtype": "<i2",
+      "compressor": {"id": "zlib", "level": 1},
+      "fill_value": -32767,
+      "order": "C",
+      "filters": [{"id": "delta", "dtype": "<i2", "astype": "<i2"}]
+    },
+    "elevation/.zattrs": {
+      "_ARRAY_DIMENSIONS": ["lat", "lon"]
+    }
+  }
+}'
+writeLines(zarray, file.path(dirname(path), ".zarray"))
+writeLines(zgroup, file.path(dirname(dirname(path)), ".zgroup"))
+writeLines(zmeta, file.path(dirname(dirname(path)), ".zmetadata"))
+
+
+reticulate::py_require("xarray")
+reticulate::py_require("fsspec")
+reticulate::py_require("kerchunk")
+reticulate::py_require("zarr")
+reticulate::py_require("dask")
+reticulate::py_require("fastparquet")
+reticulate::py_require("requests")
+reticulate::py_require("aiohttp")
+
+xarray <- reticulate::import("xarray")
+x <- xarray$open_dataset("/perm_storage/home/mdsumner/gebco2025/gebco.parquet")
+xx <- x$elevation$isel(lon = c(0L, 1L), lat = c(0L, 1L))
+xx$values
+```
+
