@@ -17,7 +17,8 @@ A reference implementation exists in R: <https://github.com/mdsumner/vrtstack>
 - Dimension values from: start/step, explicit list, or filename regex extraction
 - Temporal support: date/time parsing from filenames, origin + unit conversion
 - Output: mdim VRT (mdim convert to other specified format)
-- Validation assumptions: all inputs share the same dimensions, band type (validate) and CRS, resolution, extent (assume from first, or validate and error)
+- Validation of inputs (defaults, skip, strict see below)
+
 
 ### Out of scope (future extensions)
 
@@ -25,6 +26,18 @@ A reference implementation exists in R: <https://github.com/mdsumner/vrtstack>
 - Spatial mosaicing within slices
 - Reprojection/resampling across inputs (see warper API and GTI driver)
 - Inputs with different extents 
+
+### Validation checks
+
+| Property | Check | On Mismatch (default) | With `--strict` |
+|----------|-------|----------------------|-----------------|
+| Dimensions (nrow, ncol) | Yes | Skip + warning | Fail |
+| DataType | Yes | Skip + warning | Fail |
+| CRS | Yes (unless `--allow-crs-difference`) | Skip + warning | Fail |
+| Resolution | Yes | Skip + warning | Fail |
+| NoData | No — adopt from first | — | — |
+| BlockSize | No — adopt from first | — | — |
+
 
 ## VRT XML Structure (Target Output)
 
@@ -110,22 +123,37 @@ The auto-generated docs file `swig/include/python/docs/gdal_algorithm_docs.i` li
 ## Algorithm Parameters
 
 ```
---input, -i          Input raster files (glob, @filelist, or explicit paths/URIs)
---output, -o         Output file (.vrt or materialized)
---output-format, -f  Output format (default: VRT)
---dim-name           Name for the new dimension (required)
---dim-values         Explicit numeric values (comma-separated)
---dim-start          Start value for regular axis
---dim-increment      Increment for regular axis
---dim-type           TEMPORAL, VERTICAL, PARAMETRIC, etc.
---dim-direction      NORTH, SOUTH, UP, DOWN, FUTURE, PAST, etc.
---dim-unit           Unit string (e.g. "days since 1970-01-01", "meters")
---dim-pattern        Regex with one capture group to extract value from filename
---parse-format       strptime format string for date/time parsing (implies temporal)
---time-origin        Origin date for temporal offset computation
---time-unit          seconds | minutes | hours | days (default: days)
---array              Name for the output array (default: "data")
---band               Source band number (default: 1)
+gdal mdim concat [OPTIONS] <INPUT>... -o <OUTPUT.vrt>
+
+  --input, -i          Input raster files (glob, @filelist, or explicit paths/URIs)
+  --output, -o         Output file (.vrt or materialized)
+  --output-format, -f  Output format (default: VRT)
+  --array-name               Name for the output array (default: "data")
+  --band               Source band number (default: 1)
+
+Validation options (matching gdalbuildvrt/gdal raster mosaic):
+
+  --strict              Fail on characteristic mismatch (default: skip with warning)
+  --non-strict          Skip mismatched files with warning (default)
+  --allow-crs-difference    Allow differing CRS
+
+Dimension options:
+
+  --dim-name           Name for the new dimension (required)
+  --dim-values         Explicit numeric values (comma-separated)
+  --dim-start          Start value for regular axis
+  --dim-increment      Increment for regular axis
+  --dim-type           TEMPORAL, VERTICAL, PARAMETRIC, etc.
+  --dim-direction      NORTH, SOUTH, UP, DOWN, FUTURE, PAST, etc.
+  --dim-unit           Unit string (e.g. "days since 1970-01-01", "meters")
+
+Dimension value extraction:
+
+  --dim-pattern        Regex with one capture group to extract value from filename
+  --parse-format       strptime format string for date/time parsing (implies temporal)
+  --time-origin        Origin date for temporal offset computation
+  --time-unit          seconds | minutes | hours | days (default: days)
+
 ```
 
 ### Dimension value resolution order
