@@ -16,8 +16,8 @@ A reference implementation exists in R: <https://github.com/mdsumner/vrtstack>
 - Create one new dimension with user-specified name
 - Dimension values from: start/step, explicit list, or filename regex extraction
 - Temporal support: date/time parsing from filenames, origin + unit conversion
-- Output: mdim VRT (zero-copy, the natural output format)
-- Hard assumption: all inputs share the same CRS, resolution, and extent (validate and error)
+- Output: mdim VRT (mdim convert to other specified format)
+- Validation assumptions: all inputs share the same dimensions, band type (validate) and CRS, resolution, extent (assume from first, or validate and error)
 
 ### Out of scope (future extensions)
 
