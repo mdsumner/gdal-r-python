@@ -46,6 +46,8 @@ There are real caveats. Classic GDAL VRT and multidimensional VRT are not interc
 
 But the observation that lands, for someone arriving from the R-spatial world with VRT in muscle memory, is that the xarray community has been solving serialization *downward* — toward bytes, through kerchunk and VirtualiZarr — while the serialization problem *upward* — toward views, through something like VRT — has received less attention. This may be because the Python ecosystem's single-language cohesion makes "just share the notebook" feel sufficient, and because xarray's richness makes a clean declarative subset feel like a compromise. These are reasonable reasons. They are also the reasons the gap persists.
 
+The move to byte-reference virtualization — where metadata is JSON, bytes are blobs, and the format library becomes optional after indexing — is one of the quieter but more important shifts in scientific data infrastructure. It's the same insight that made TIFF workable in 1986, now being generalized across HDF5, NetCDF, GRIB, and Zarr. It's a genuinely good direction. The observation of this post is that it's not, by itself, a complete answer to the view-description problem.
+
 The cross-language view-description format that xarray is missing may already exist, in a different neighbourhood, wearing different clothes. Whether the right answer is to adopt it, adapt it, or build something fresh that rhymes with it is a question for the xarray community. But it is a question worth asking, and one that is easier to see from outside the tent.
 
 ---
