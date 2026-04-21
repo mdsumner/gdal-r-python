@@ -159,6 +159,11 @@ packages. Bootable but insufficient for a typical CRAN package's PDF manual
 because Rd files reach for `inconsolata`, `upquote`, etc. `tlmgr_install()`
 adds those.
 
+NOTE: if you already installed texlive you have to unpick that an tinytex needs some config. Just left here as a note for now
+
+https://github.com/hypertidy/gdal-r-ci/issues/16
+
+
 **On-demand behaviour:** once `install_tinytex()` is in place, running
 `tinytex::latexmk()` or `R CMD Rd2pdf` will intercept "missing .sty" errors
 and install what's needed automatically. Fine for an interactive workstation.
