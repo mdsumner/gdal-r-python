@@ -18,9 +18,16 @@ That consists of 186 monthly files, which we now render to a text file list, and
 
 ```{r render}
 base <- "/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_%s.nc"
-dates <- seq(as.Date("2010-01-01"), as.Date("2025-06-01"), by = "1 month")
+dates <- seq(as.Date("2010-01-01"), as.Date("2025-01-01"), by = "1 month")
 writeLines(sprintf(base, format(dates, "%Y_%m")), "bluelink2023-temp-filelist")
 system("gdal mdim mosaic @bluelink2023-temp-filelist bluelink2023-temp.vrt")
+```
+
+Another way to get those files from the virtualized store is like this: 
+
+```{r arrow)
+bucket <- arrow::s3_bucket(endpoint_override="https://projects.pawsey.org.au", "aad-index")
+dplyr::collect(dplyr::distinct(arrow::open_dataset(bucket$path("vzarr/ocean_temp_2023.parq/temp")), path))
 
 ```
 
