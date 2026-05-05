@@ -67,4 +67,9 @@ big_virtual_mdim = "/vsicurl/https://gist.githubusercontent.com/mdsumner/18c5d30
 bvm = backend.open_dataset(big_virtual_mdim, multidim = True, chunks = {})
 ```
 
+What are some other nice features we could have in this space? 
+
+- multdimensional GDAL for R
+- serialize xarray to VRT (mdim)
+- gdal mdim mosaic on input GeoTIFF to cast up to an array (possible with mdim vrt but not currently enabled by the mosaic)
 
