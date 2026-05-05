@@ -1,0 +1,63 @@
+---
+title: "Views on virtual multimensional data"
+format: html
+---
+
+## Virtual Multidimensional Data
+
+Here are two takes on a large logical array spread across multiple NetCDFs. 
+
+```{python nci-xarray}
+import xarray
+ds = xarray.open_dataset("https://projects.pawsey.org.au/aad-index/vzarr/ocean_temp_2023.parq", engine = "kerchunk", decode_times = False)
+ds
+```
+
+That consists of 186 monthly files, which we now render to a text file list, and use `gdal mdim mosaic` to convert that to a GDAL multidimensional VRT. 
+
+
+```{r render}
+base <- "/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_%s.nc"
+dates <- seq(as.Date("2010-01-01"), as.Date("2025-06-01"), by = "1 month")
+writeLines(sprintf(base, format(dates, "%Y_%m")), "bluelink2023-temp-filelist")
+system("gdal mdim mosaic @bluelink2023-temp-filelist bluelink2023-temp.vrt")
+
+```
+
+
+
+```{python nci-gdal}
+from osgeo import gdal
+gdal.UseExceptions()
+ds = gdal.OpenEx("bluelink2023-temp.vrt", gdal.OF_MULTIDIM_RASTER)
+
+```
+
+We now have two equivalent lazy-loaded datasets, that are otherwise pretty incompabible. 
+
+GDAL has an intermediate virtual form for tradtional input datasets: VRT, and while is most commonly used in classic raster form (2D + bands) it is available for multidimensional rasters.
+
+xarray has no such intermidiate form, once you've loaded traditional files you can only save them out to materalized Zarr (for example), or work with the chunks in memory. There is a virtualized form though (the .parq store above is a V2 Zarr), but it now has nothing to do with the underlying NetCDF sources except that their bytes exist at the source url. 
+
+GDAL can open the byte-ref store too, but xarray cannot open the multidimensional VRT (unless, see below). 
+
+```{python nci-virt}
+from osgeo import gdal
+gdal.UseExceptions()
+ds = gdal.OpenEx("ZARR:\"https://projects.pawsey.org.au/aad-index/vzarr/ocean_temp_2023.parq\"", gdal.OF_MULTIDIM_RASTER)
+
+```
+
+If you really want xarray to open the GDAL form we can do it with `gdx` which provides a full GDAL backend for xarray. 
+
+
+```{python gdx}
+from gdx import GDALBackendEntrypoint
+backend = GDALBackendEntrypoint()
+
+big_virtual_mdim = "/vsicurl/https://gist.githubusercontent.com/mdsumner/18c5d302d00b9a456bb73d30ac758764/raw/f26e1b2e202f759d6aace4d7deb3e04ea3c85f15/mdim.vrt"
+
+bvm = backend.open_dataset(big_virtual_mdim, multidim = True, chunks = {})
+```
+
+
