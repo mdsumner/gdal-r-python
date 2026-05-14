@@ -1,0 +1,25 @@
+export dsn="/vsicurl/https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/198109/oisst-avhrr-v02r01.19810910.nc"
+ 1991  python3 probe_getrawblockinfo.py $dsn sst
+ 1992  echo $dsn
+ 1993  python3 probe_getrawblockinfo.py $dsn sst
+ 1994  export dsn="ZARR:\"/vsicurl/https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/PRODUCT/dataset/timeChunked.zarr\""
+ 1995  python3 probe_getrawblockinfo.py $dsn sla
+ 1996  gdalinfo $dsn
+ 1997  cat ~/.bashrc
+ 1998  AWS_ACCESS_KEY_ID=$CMEMS_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$CMEMS_SECRET python3 probe_getrawblockinfo.py $dsn sla
+ 1999  export dsn="ZARR:\"/vsicurl/https://s3.waw3-1.cloudferro.com/mdl-exporarco-time-045/arco/PRODUCT/dataset/timeChunked.zarr\""
+ 2000  export dsn="ZARR:\"/vsis3/mdl-arco-time-045/arco/PRODUCT/dataset/timeChunked.zarr\""
+ 2001  AWS_ACCESS_KEY_ID=$CMEMS_ACCESS_KEY AWS_SECRET_ACCESS_KEY=$CMEMS_SECRET python3 probe_getrawblockinfo.py $dsn sla
+ 2002  export dsn="ZARR:\"/vsicurl/https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SEALEVEL_GLO_PHY_L4_NRT_008_046/cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.25deg_P1D_202311/timeChunked.zarr\""
+ 2003  python3 probe_getrawblockinfo.py $dsn sla
+ 2004  gdalinfo ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq
+ 2005  export AWS_S3_ENDPOINT=https://projects.pawsey.org.au gdalinfo ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq
+ 2006  AWS_S3_ENDPOINT=https://projects.pawsey.org.au gdalinfo ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq
+ 2007  AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au gdalinfo ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq
+ 2008  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au gdalinfo ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq
+ 2009  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au python3 probe_getrawblockinfo.py  ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq temp
+ 2010  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au python3 probe_getrawblockinfo.py  ZARR:/vsis3/aad-index/vzarr/ocean_temp_2023.parq xt_ocean
+ 2011  gdal mdim mosaic /vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc /vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_02.nc /vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_03.nc  mdim_ocean_temp_2010-01-03.vrt
+ 2012  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au python3 probe_getrawblockinfo.py  mdim_ocean_temp_2010-01-03.vrt
+ 2013  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au python3 probe_getrawblockinfo.py  mdim_ocean_temp_2010-01-03.vrt  temp
+ 2014  AWS_VIRTUAL_HOSTING=NO AWS_NO_SIGN_REQUEST=YES AWS_S3_ENDPOINT=https://projects.pawsey.org.au python3 probe_getrawblockinfo.py  mdim_ocean_temp_2010-01-03.vrt  Time

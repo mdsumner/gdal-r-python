@@ -1,0 +1,221 @@
+<VRTDataset>
+  <Group name="/">
+    <Dimension name="Time" type="TEMPORAL" size="90" indexingVariable="Time" />
+    <Dimension name="nv" size="2" indexingVariable="nv" />
+    <Dimension name="st_ocean" type="VERTICAL" direction="DOWN" size="51" indexingVariable="st_ocean" />
+    <Dimension name="xt_ocean" type="HORIZONTAL_X" size="3600" indexingVariable="xt_ocean" />
+    <Dimension name="yt_ocean" type="HORIZONTAL_Y" size="1500" indexingVariable="yt_ocean" />
+    <Array name="Time">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="Time" />
+      <RegularlySpacedValues start="11323.5" increment="1" />
+      <Attribute name="bounds">
+        <DataType>String</DataType>
+        <Value>Time_bnds</Value>
+      </Attribute>
+      <Attribute name="calendar">
+        <DataType>String</DataType>
+        <Value>GREGORIAN</Value>
+      </Attribute>
+      <Attribute name="calendar_type">
+        <DataType>String</DataType>
+        <Value>GREGORIAN</Value>
+      </Attribute>
+      <Attribute name="cartesian_axis">
+        <DataType>String</DataType>
+        <Value>T</Value>
+      </Attribute>
+      <Attribute name="cell_methods">
+        <DataType>String</DataType>
+        <Value>Time: mean</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>Time</Value>
+      </Attribute>
+    </Array>
+    <Array name="nv">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="nv" />
+      <InlineValues offset="0" count="2">1 2</InlineValues>
+      <Attribute name="cartesian_axis">
+        <DataType>String</DataType>
+        <Value>N</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>vertex number</Value>
+      </Attribute>
+    </Array>
+    <Array name="Time_bnds">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="Time" />
+      <DimensionRef ref="nv" />
+      <BlockSize>1,2</BlockSize>
+      <Unit>days</Unit>
+      <NoDataValue>1e+20</NoDataValue>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc</SourceFilename>
+        <SourceArray>/Time_bnds</SourceArray>
+        <SourceSlab offset="0,0" count="31,2" step="1,1" />
+        <DestSlab offset="0,0" />
+      </Source>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_02.nc</SourceFilename>
+        <SourceArray>/Time_bnds</SourceArray>
+        <SourceSlab offset="0,0" count="28,2" step="1,1" />
+        <DestSlab offset="31,0" />
+      </Source>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_03.nc</SourceFilename>
+        <SourceArray>/Time_bnds</SourceArray>
+        <SourceSlab offset="0,0" count="31,2" step="1,1" />
+        <DestSlab offset="59,0" />
+      </Source>
+      <Attribute name="NumFilesInSet">
+        <DataType>Int32</DataType>
+        <Value>20</Value>
+      </Attribute>
+      <Attribute name="cell_methods">
+        <DataType>String</DataType>
+        <Value>Time: mean</Value>
+      </Attribute>
+      <Attribute name="filename">
+        <DataType>String</DataType>
+        <Value>TMP/ocean_temp_2010_01_01.nc.0000</Value>
+      </Attribute>
+      <Attribute name="grid_type">
+        <DataType>String</DataType>
+        <Value>regular</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>Time axis boundaries</Value>
+      </Attribute>
+      <Attribute name="title">
+        <DataType>String</DataType>
+        <Value>BRAN2023</Value>
+      </Attribute>
+    </Array>
+    <Array name="st_ocean">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="st_ocean" />
+      <InlineValues offset="0" count="51">2.5 7.5 12.5 17.515390396118164 22.667020797729492 28.169380187988281 34.218006134033203 40.954975128173828 48.454975128173828 56.718006134033203 65.669380187988281 75.167022705078125 85.015388488769531 95 105 115 125 135 145 155 165 175 185 195 205.18989562988281 217.05448913574219 233.19432067871094 255.88423156738281 286.60897827148438 325.88421630859375 373.1943359375 427.05447387695312 485.18991088867188 545.5111083984375 610.4156494140625 685.9267578125 775.9267578125 880.4156494140625 995.5111083984375 1115.3133544921875 1238.3538818359375 1368.157470703125 1507.73388671875 1658.157470703125 1818.3538818359375 1985.3133544921875 2165.18017578125 2431.10107421875 2894.841796875 3603.10107421875 4509.18017578125</InlineValues>
+      <Attribute name="cartesian_axis">
+        <DataType>String</DataType>
+        <Value>Z</Value>
+      </Attribute>
+      <Attribute name="edges">
+        <DataType>String</DataType>
+        <Value>st_edges_ocean</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>tcell zstar depth</Value>
+      </Attribute>
+      <Attribute name="positive">
+        <DataType>String</DataType>
+        <Value>down</Value>
+      </Attribute>
+    </Array>
+    <Array name="yt_ocean">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="yt_ocean" />
+      <RegularlySpacedValues start="-74.949996948242188" increment="0.099999998091060582" />
+      <Attribute name="cartesian_axis">
+        <DataType>String</DataType>
+        <Value>Y</Value>
+      </Attribute>
+      <Attribute name="domain_decomposition">
+        <DataType>Int32</DataType>
+        <Value>1</Value>
+        <Value>1500</Value>
+        <Value>1</Value>
+        <Value>150</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>tcell latitude</Value>
+      </Attribute>
+    </Array>
+    <Array name="xt_ocean">
+      <DataType>Float64</DataType>
+      <DimensionRef ref="xt_ocean" />
+      <RegularlySpacedValues start="0.05000000074505806" increment="0.10000000369999582" />
+      <Attribute name="cartesian_axis">
+        <DataType>String</DataType>
+        <Value>X</Value>
+      </Attribute>
+      <Attribute name="domain_decomposition">
+        <DataType>Int32</DataType>
+        <Value>1</Value>
+        <Value>3600</Value>
+        <Value>1</Value>
+        <Value>1800</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>tcell longitude</Value>
+      </Attribute>
+    </Array>
+    <Array name="temp">
+      <DataType>Int16</DataType>
+      <DimensionRef ref="Time" />
+      <DimensionRef ref="st_ocean" />
+      <DimensionRef ref="yt_ocean" />
+      <DimensionRef ref="xt_ocean" />
+      <BlockSize>1,1,300,300</BlockSize>
+      <Unit>degrees C</Unit>
+      <NoDataValue>-32768</NoDataValue>
+      <Offset>245</Offset>
+      <Scale>0.0077822199091315269</Scale>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc</SourceFilename>
+        <SourceArray>/temp</SourceArray>
+        <SourceSlab offset="0,0,0,0" count="31,51,1500,3600" step="1,1,1,1" />
+        <DestSlab offset="0,0,0,0" />
+      </Source>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_02.nc</SourceFilename>
+        <SourceArray>/temp</SourceArray>
+        <SourceSlab offset="0,0,0,0" count="28,51,1500,3600" step="1,1,1,1" />
+        <DestSlab offset="31,0,0,0" />
+      </Source>
+      <Source>
+        <SourceFilename>/vsicurl/https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_03.nc</SourceFilename>
+        <SourceArray>/temp</SourceArray>
+        <SourceSlab offset="0,0,0,0" count="31,51,1500,3600" step="1,1,1,1" />
+        <DestSlab offset="59,0,0,0" />
+      </Source>
+      <Attribute name="cell_methods">
+        <DataType>String</DataType>
+        <Value>time: mean Time: mean</Value>
+      </Attribute>
+      <Attribute name="coordinates">
+        <DataType>String</DataType>
+        <Value>geolon_t geolat_t</Value>
+      </Attribute>
+      <Attribute name="long_name">
+        <DataType>String</DataType>
+        <Value>Potential temperature</Value>
+      </Attribute>
+      <Attribute name="packing">
+        <DataType>Int32</DataType>
+        <Value>4</Value>
+      </Attribute>
+      <Attribute name="standard_name">
+        <DataType>String</DataType>
+        <Value>sea_water_potential_temperature</Value>
+      </Attribute>
+      <Attribute name="time_avg_info">
+        <DataType>String</DataType>
+        <Value>average_T1,average_T2,average_DT</Value>
+      </Attribute>
+      <Attribute name="valid_range">
+        <DataType>Int16</DataType>
+        <Value>-32767</Value>
+        <Value>32767</Value>
+      </Attribute>
+    </Array>
+  </Group>
+</VRTDataset>
