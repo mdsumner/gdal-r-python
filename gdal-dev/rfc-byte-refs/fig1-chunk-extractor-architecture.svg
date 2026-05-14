@@ -1,0 +1,76 @@
+<svg width="100%" viewBox="0 0 680 470" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<title>Architecture of an mdim-to-vector chunk reference extractor</title>
+<desc>A multidimensional array source feeds a per-chunk enumeration loop calling GetRawBlockInfo, which produces a feature per chunk; that feature stream can be written to three sink types: an attribute-only table, a table with chunk-index geometry, or a table with projected bounding-box geometry.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<style>
+.th { font-size: 14px; font-weight: 500; }
+.ts { font-size: 12px; font-weight: 400; }
+.teal-fill   { fill: #E1F5EE; stroke: #0F6E56; }
+.purple-fill { fill: #EEEDFE; stroke: #534AB7; }
+.blue-fill   { fill: #E6F1FB; stroke: #185FA5; }
+.gray-fill   { fill: #F1EFE8; stroke: #5F5E5A; }
+.teal-t   { fill: #085041; }  .teal-s   { fill: #0F6E56; }
+.purple-t { fill: #3C3489; }  .purple-s { fill: #534AB7; }
+.blue-t   { fill: #0C447C; }  .blue-s   { fill: #185FA5; }
+.gray-t   { fill: #444441; }
+.edge { stroke: #5F5E5A; stroke-width: 1.5px; }
+</style>
+</defs>
+
+<rect class="teal-fill" x="40" y="40" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="th teal-t" x="130" y="60" text-anchor="middle" dominant-baseline="central">mdim source</text>
+<text class="ts teal-s" x="130" y="78" text-anchor="middle" dominant-baseline="central">netCDF, HDF5, Zarr, VRT</text>
+
+<line class="edge" x1="220" y1="68" x2="270" y2="68" marker-end="url(#arrow)"/>
+
+<rect class="purple-fill" x="270" y="40" width="190" height="56" rx="8" stroke-width="0.5"/>
+<text class="th purple-t" x="365" y="60" text-anchor="middle" dominant-baseline="central">per-chunk enumeration</text>
+<text class="ts purple-s" x="365" y="78" text-anchor="middle" dominant-baseline="central">GetRawBlockInfo over grid</text>
+
+<line class="edge" x1="460" y1="68" x2="510" y2="68" marker-end="url(#arrow)"/>
+
+<rect class="purple-fill" x="510" y="40" width="130" height="56" rx="8" stroke-width="0.5"/>
+<text class="th purple-t" x="575" y="60" text-anchor="middle" dominant-baseline="central">feature per chunk</text>
+<text class="ts purple-s" x="575" y="78" text-anchor="middle" dominant-baseline="central">ref record + geom</text>
+
+<line class="edge" x1="575" y1="96" x2="575" y2="130" marker-end="url(#arrow)"/>
+<text class="ts gray-t" x="575" y="113" text-anchor="middle" dominant-baseline="central">OGR layer sink</text>
+
+<rect class="gray-fill" x="40" y="150" width="600" height="40" rx="8" stroke-width="0.5"/>
+<text class="th gray-t" x="340" y="170" text-anchor="middle" dominant-baseline="central">three sink modes — same feature stream, different geometry choice</text>
+
+<rect class="blue-fill" x="40" y="220" width="185" height="210" rx="8" stroke-width="0.5"/>
+<text class="th blue-t" x="132" y="242" text-anchor="middle" dominant-baseline="central">attribute-only</text>
+<text class="ts blue-s" x="132" y="262" text-anchor="middle" dominant-baseline="central">no geometry</text>
+<text class="ts gray-t" x="132" y="292" text-anchor="middle">path, offset, size</text>
+<text class="ts gray-t" x="132" y="312" text-anchor="middle">codec info string</text>
+<text class="ts gray-t" x="132" y="332" text-anchor="middle">chunk index columns</text>
+<text class="ts gray-t" x="132" y="352" text-anchor="middle">present flag</text>
+<text class="ts gray-t" x="132" y="378" text-anchor="middle">&#8594; Parquet, FlatGeobuf,</text>
+<text class="ts gray-t" x="132" y="396" text-anchor="middle">GPKG table</text>
+
+<rect class="blue-fill" x="247" y="220" width="186" height="210" rx="8" stroke-width="0.5"/>
+<text class="th blue-t" x="340" y="242" text-anchor="middle" dominant-baseline="central">index-space geometry</text>
+<text class="ts blue-s" x="340" y="262" text-anchor="middle" dominant-baseline="central">bbox in chunk coords</text>
+<text class="ts gray-t" x="340" y="292" text-anchor="middle">all attributes, plus</text>
+<text class="ts gray-t" x="340" y="312" text-anchor="middle">polygon = chunk extent</text>
+<text class="ts gray-t" x="340" y="332" text-anchor="middle">in array index space</text>
+<text class="ts gray-t" x="340" y="352" text-anchor="middle">no CRS needed</text>
+<text class="ts gray-t" x="340" y="378" text-anchor="middle">&#8594; spatial queries over</text>
+<text class="ts gray-t" x="340" y="396" text-anchor="middle">the chunk grid itself</text>
+
+<rect class="blue-fill" x="455" y="220" width="185" height="210" rx="8" stroke-width="0.5"/>
+<text class="th blue-t" x="547" y="242" text-anchor="middle" dominant-baseline="central">projected geometry</text>
+<text class="ts blue-s" x="547" y="262" text-anchor="middle" dominant-baseline="central">bbox in array CRS</text>
+<text class="ts gray-t" x="547" y="292" text-anchor="middle">all attributes, plus</text>
+<text class="ts gray-t" x="547" y="312" text-anchor="middle">polygon = chunk extent</text>
+<text class="ts gray-t" x="547" y="332" text-anchor="middle">in geospatial coords</text>
+<text class="ts gray-t" x="547" y="352" text-anchor="middle">needs geotransform</text>
+<text class="ts gray-t" x="547" y="378" text-anchor="middle">&#8594; "which chunks cover</text>
+<text class="ts gray-t" x="547" y="396" text-anchor="middle">my AOI" by intersection</text>
+
+<line class="edge" x1="575" y1="190" x2="575" y2="220" marker-end="url(#arrow)"/>
+<line class="edge" x1="340" y1="190" x2="340" y2="220" marker-end="url(#arrow)"/>
+<line class="edge" x1="132" y1="190" x2="132" y2="220" marker-end="url(#arrow)"/>
+</svg>

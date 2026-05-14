@@ -1,0 +1,45 @@
+<svg width="100%" viewBox="0 0 680 510" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<title>Four-stage roadmap for an mdim chunk-reference extractor in GDAL</title>
+<desc>Stage one extracts one array's chunks to a Parquet attribute table. Stage two adds index-space bounding-box geometry. Stage three adds projected geometry conditional on a valid geotransform. Stage four generalises to a read-side metadriver where table plus metadata is equivalent to a Zarr store. Each stage is independently shippable.</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<style>
+.th { font-size: 14px; font-weight: 500; }
+.ts { font-size: 12px; font-weight: 400; }
+.teal-fill   { fill: #E1F5EE; stroke: #0F6E56; }
+.purple-fill { fill: #EEEDFE; stroke: #534AB7; }
+.blue-fill   { fill: #E6F1FB; stroke: #185FA5; }
+.teal-t   { fill: #085041; }  .teal-s   { fill: #0F6E56; }
+.purple-t { fill: #3C3489; }  .purple-s { fill: #534AB7; }
+.blue-t   { fill: #0C447C; }  .blue-s   { fill: #185FA5; }
+.edge { stroke: #5F5E5A; stroke-width: 1.5px; }
+</style>
+</defs>
+
+<rect class="teal-fill" x="40" y="40" width="600" height="84" rx="10" stroke-width="0.5"/>
+<text class="th teal-t" x="64" y="64" dominant-baseline="central">Stage 1 — minimum viable extractor</text>
+<text class="ts teal-s" x="64" y="86" dominant-baseline="central">one named array, iterate all blocks, write attribute-only Parquet</text>
+<text class="ts teal-s" x="64" y="104" dominant-baseline="central">path, offset, size, codec info, chunk index, present flag — inline data unsupported, errors clearly</text>
+
+<line class="edge" x1="340" y1="124" x2="340" y2="150" marker-end="url(#arrow)"/>
+
+<rect class="purple-fill" x="40" y="150" width="600" height="84" rx="10" stroke-width="0.5"/>
+<text class="th purple-t" x="64" y="174" dominant-baseline="central">Stage 2 — index-space geometry</text>
+<text class="ts purple-s" x="64" y="196" dominant-baseline="central">add bbox polygon in array index coordinates — no CRS needed, works for every array</text>
+<text class="ts purple-s" x="64" y="214" dominant-baseline="central">output becomes a real vector layer; spatial filter over the chunk grid itself</text>
+
+<line class="edge" x1="340" y1="234" x2="340" y2="260" marker-end="url(#arrow)"/>
+
+<rect class="purple-fill" x="40" y="260" width="600" height="84" rx="10" stroke-width="0.5"/>
+<text class="th purple-t" x="64" y="284" dominant-baseline="central">Stage 3 — projected geometry</text>
+<text class="ts purple-s" x="64" y="306" dominant-baseline="central">add bbox polygon in the array CRS — conditional on a valid geotransform</text>
+<text class="ts purple-s" x="64" y="324" dominant-baseline="central">declines or falls back to index space when georeferencing is ill-defined</text>
+
+<line class="edge" x1="340" y1="344" x2="340" y2="370" marker-end="url(#arrow)"/>
+
+<rect class="blue-fill" x="40" y="370" width="600" height="100" rx="10" stroke-width="0.5"/>
+<text class="th blue-t" x="64" y="394" dominant-baseline="central">Stage 4 — read-side metadriver</text>
+<text class="ts blue-s" x="64" y="416" dominant-baseline="central">the reference table plus array metadata is consumable as a virtual store</text>
+<text class="ts blue-s" x="64" y="434" dominant-baseline="central">table + metadata == Zarr — a kerchunk/VirtualiZarr equivalent native to GDAL</text>
+<text class="ts blue-s" x="64" y="452" dominant-baseline="central">round-trips back through the mdim API it came from</text>
+</svg>
