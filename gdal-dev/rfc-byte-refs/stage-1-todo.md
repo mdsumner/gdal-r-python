@@ -166,3 +166,37 @@ the RFC review should validate or refine:
 - Latent classic-API widening (post-mdim consolidation)
 - Pipeline-step integration (separate stage; mechanically transposable
   from current `RunImpl` body into a `RunStep` if/when needed)
+
+## Example output and downstream use
+
+```R
+# MDIM-GET-REFS: array /temp: dims=[31, 51, 1500, 3600], blocks=[1, 1, 300, 300], chunks=[31, 51, 5, 12], total=94860, dtype=Int16
+# MDIM-GET-REFS: created layer 'temp' with 9 fields, ready for 94860 features
+# MDIM-GET-REFS: chunk 0 coords=[0, 0, 0, 0] path=bluelink/ocean_temp_2010_01.nc offset=46353 size=74186
+# MDIM-GET-REFS: chunk 1 coords=[0, 0, 0, 1] path=bluelink/ocean_temp_2010_01.nc offset=120539 size=66578
+
+# tibble::as_tibble(arrow::read_parquet("~/temp.parquet"))
+# # A tibble: 94,860 × 9
+# dim_0 dim_1 dim_2 dim_3 present path                            offset  size info                                                  
+# <int> <int> <int> <int> <lgl>   <chr>                          <int64> <int> <chr>                                                 
+# 1     0     0     0     0 TRUE    bluelink/ocean_temp_2010_01.nc   46353 74186 COMPRESSION=DEFLATE; FILTER=SHUFFLE; ENDIANNESS=LITTLE
+# 2     0     0     0     1 TRUE    bluelink/ocean_temp_2010_01.nc  120539 66578 COMPRESSION=DEFLATE; FILTER=SHUFFLE; ENDIANNESS=LITTLE
+
+size <- 74186
+offset <- 46353
+con <- file("~/bluelink/ocean_temp_2010_01.nc", "rb")
+seek(con, offset)
+raw_chunk <- readBin(con, raw(), n = size)
+close(con)
+deflated  <- memDecompress(raw_chunk, type = "gzip")   # or "deflate" depending on header
+# unshuffle: itemsize=2, n_elements = length(deflated)/2
+unshuffle <- function(x, itemsize) {
+  n <- length(x) %/% itemsize
+  idx <- as.vector(t(matrix(seq_along(x), nrow = itemsize, byrow = FALSE)))
+  # interleave byte planes back
+  x[order(idx)]
+}
+vals <- readBin(unshuffle(deflated, 2L), integer(), n = length(deflated)/2, size = 2, endian = "little")
+ximage::ximage(matrix(vals, 300, byrow = T))
+
+```
