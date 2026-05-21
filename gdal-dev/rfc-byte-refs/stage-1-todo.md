@@ -169,6 +169,9 @@ the RFC review should validate or refine:
 
 ## Example output and downstream use
 
+local file or remote doesn't care
+
+
 ```R
 # MDIM-GET-REFS: array /temp: dims=[31, 51, 1500, 3600], blocks=[1, 1, 300, 300], chunks=[31, 51, 5, 12], total=94860, dtype=Int16
 # MDIM-GET-REFS: created layer 'temp' with 9 fields, ready for 94860 features
@@ -184,8 +187,11 @@ the RFC review should validate or refine:
 
 size <- 74186
 offset <- 46353
-con <- file("~/bluelink/ocean_temp_2010_01.nc", "rb")
-seek(con, offset)
+#con <- file("~/bluelink/ocean_temp_2010_01.nc", "rb")
+#seek(con, offset)
+
+con <- url("https://thredds.nci.org.au/thredds/fileServer/gb6/BRAN/BRAN2023/daily/ocean_temp_2010_01.nc", "rb")
+seekjunk <- readBin(con, raw(), n = offset)
 raw_chunk <- readBin(con, raw(), n = size)
 close(con)
 deflated  <- memDecompress(raw_chunk, type = "gzip")   # or "deflate" depending on header
