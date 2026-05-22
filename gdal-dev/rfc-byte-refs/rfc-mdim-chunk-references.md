@@ -12,21 +12,22 @@
 This RFC proposes a new GDAL algorithm that converts a *multidimensional array*
 into a *vector layer*: one feature per chunk, carrying the raw storage reference
 for that chunk (containing file/object, byte offset, byte size, codec
-description, chunk index). The canonical output is a Parquet table, but because
-the sink is an ordinary `OGRLayer`, any OGR-writable format works.
+description, chunk index). The output is `OGRLayer`. 
 
-The proposal is deliberately staged. Stage 1 is a minimal, self-contained
-extractor that is useful on its own. Each subsequent stage adds exactly one
-capability and remains shippable if later stages are never built. The end of the
-roadmap is a read-side "metadriver" in which a reference table plus array
-metadata is consumable as a virtual multidimensional store — a kerchunk /
-VirtualiZarr equivalent expressed in GDAL's own primitives.
+The proposal is staged: Stage 1 is a minimal extractor - create a vector table 
+with dimension indices, chunk presence/absence, filename/path, chunk offset, chunk
+size, optional inline data, and chunk encoding.
+
+Subsequent stages are included here for context, there is potential
+for a read-side "metadriver" in which a reference table plus array
+metadata (compatible with VRT output of `gdal mdim mosaic`) is consumable as a 
+virtual multidimensional store — i.e. a kerchunk / VirtualiZarr equivalent. 
 
 ## 2. Motivation
 
 `GDALMDArray::GetRawBlockInfo()` (added in 3.12, implemented for HDF5, netCDF,
-ZARR and VRT) exposes, per chunk, the information needed to locate that chunk's
-*encoded* bytes without decoding them: the containing file or object, the byte
+ZARR and VRT) exposes the location of an indexed chunk's
+*encoded* bytes: the containing file or object, the byte
 offset and length, any inline payload, and a driver-dependent codec description.
 
 That primitive answers a per-chunk question. What users repeatedly need is the
@@ -104,10 +105,7 @@ authoritative copy.)
 
 - *Inline chunk data.* Chunks stored inline (no file/offset) are reported with
   `present = true` but null `path`/`offset`/`size`. Stage 1 does **not** emit the
-  inline bytes. This is a deliberate, documented limitation: every other field is
-  still correct and useful, and a dataset with no inline chunks (the common case
-  for archival netCDF/HDF5) is fully served. Carrying the bytes is Stage 1b/2
-  work.
+  inline bytes and doing so has implications for some driver choices. 
 - *Geometry.* Stage 1 output has no geometry column. The chunk-index columns
   carry the spatial information in attribute form.
 - *Multiple arrays.* One array per invocation. Whole-dataset traversal is a thin
