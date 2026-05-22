@@ -209,7 +209,9 @@ Indicative arguments:
   was not adopted: per-dimension typed columns preserve Parquet predicate pushdown for spatial-and-temporal range queries, which is the strongest
   performance characteristic of the chosen output format. The trade-off is N columns instead of one and a schema whose width varies with array rank.
   The dimension names are not used as column names directly to avoid sanitization concerns with arbitrary HDF5/netCDF names; named-column variants (e.g. --dim-names) could be added in a future stage.
-
+- **Shared helpers** in `get_refs_common.h` include both `LinearToCoords` (used by the enumeration loop) and inverse `CoordsToLinear` (currently unused but
+  anticipated for Stage 2. 
+  
 ## 7. Backward compatibility
 
 Purely additive. A new algorithm, a new optional `gdal mdim` subcommand, and new
