@@ -141,6 +141,10 @@ discipline keeps Stage 1's contract narrow and observable.
 
 see here for details: https://github.com/mdsumner/gdal-r-python/blob/main/gdal-dev/rfc-byte-refs/format-generality-verification.md
 
+Note however that performance is limiting when GetRawBlockInfo works per-chunk. In HDF5 there's an `H5Dchunk_iter` which gets all the
+refs very quickly, even via remote. For parquet stores a similar shortcut would have to be enabled to hit the underlying parquet store, and to normalize
+across multiple sources referenced in a VRT. 
+
 ---
 
 ## Open design questions (RFC discussion items)
