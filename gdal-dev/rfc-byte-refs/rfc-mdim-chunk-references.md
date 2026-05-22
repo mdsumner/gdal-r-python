@@ -184,26 +184,15 @@ Indicative arguments:
 ## 6. Implementation notes
 
 - **Chunk-grid enumeration** comes from `GetDimensions()` and `GetBlockSize()`.
-  The valid block-coordinate range per dimension needs to be pinned against the
-  partial-edge-chunk case: a dimension whose size is not an integer multiple of
-  the block size still has a real, addressable trailing chunk, and the
-  enumeration must include it. This should be confirmed by test against the
-  implementing drivers rather than inferred from the doc wording.
 - **A dimension reporting block size 0** ("no natural block size") must be a
-  clear error, not a divide-by-zero.
-- **64-bit fields.** `offset` and `size` are `uint64`; OGR's `OFTInteger64`
-  carries them directly with no marshalling workaround.
+  clear error.
+- **64-bit fields.** `offset` and `size` are `uint64` and OGR's `OFTInteger64`
+  in the output. 
 - **Sparse chunks.** `GetRawBlockInfo()` returns success with zeroed/null fields
-  for a valid-but-absent chunk. These features are retained (`present = false`),
-  not dropped — absent chunks are information. Detection keys off the null
-  filename, not off `offset == 0`, since 0 is a legal offset.
-- **VRT caveat.** `GetRawBlockInfo()` on VRT only works when the VRT declares a
-  block size and each VRT block maps to exactly one source block of matching
-  size. The algorithm should surface the failure clearly and the docs should
-  state the constraint.
+  for a valid-but-absent chunk. These features are retained (`present = false`).
+  detection off the null filename. 
 - **Codec description** is driver-dependent text. The algorithm passes it
-  through verbatim; it does not parse or normalise it (normalisation across
-  drivers, if wanted, is separate future work).
+  through verbatim; it does not parse or normalize it.
 - **Chunk-coordinate encoding** Stage 1 emits per-dimension chunk coordinates as separate typed integer columns `(dim_0..dim_n, all Integer64)`,
   with dimension names recorded in layer metadata `(DIM_N_NAME)`. The alternative of a single string-encoded column (e.g. '0.0.0.0' matching Zarr's on-disk key convention)
   was not adopted: per-dimension typed columns preserve Parquet predicate pushdown for spatial-and-temporal range queries, which is the strongest
@@ -212,35 +201,21 @@ Indicative arguments:
 - **Shared helpers** in `get_refs_common.h` include both `LinearToCoords` (used by the enumeration loop) and inverse `CoordsToLinear` (currently unused but
   anticipated for Stage 2. 
   
-## 7. Backward compatibility
 
-Purely additive. A new algorithm, a new optional `gdal mdim` subcommand, and new
-C++ API surface. No existing behaviour, format, or API changes. No new hard
-dependency: Parquet output requires the (Geo)Parquet driver, but the algorithm
-itself writes to any `OGRLayer`, so the Parquet driver is a recommendation, not
-a requirement.
+## 7. Open questions
 
-## 8. Open questions
-
-- Final subcommand name (must not read as mdim→mdim convert).
+- Final subcommand name. 
 - Whether per-row `info` should be kept once array-level codec metadata exists,
   or dropped in favour of the layer-metadata copy for all drivers.
-- Whether Stage 2's compact-bbox Parquet encoding should be the default for
-  Parquet output or an explicit option.
-- The exact metadata schema for Stage 4 — what, beyond the reference table, must
-  travel alongside for the virtual store to be reconstructable, and whether that
-  metadata should itself be standardised.
+- Desirable defaults and controls for geometry encoding in later stages (x,y nomination,
+  geometry type, simple coordinate ranges per dimensions, etc. 
 - Multi-array / whole-dataset traversal: thin loop in the same algorithm, or a
   separate wrapper.
 
-## 9. Relationship to existing ecosystem work
+## 8. Relationship to existing ecosystem work
 
-This formalises, inside GDAL, the reference-extraction step that kerchunk and
-VirtualiZarr perform externally. It is complementary to those projects rather
-than competitive: GDAL already consumes their reference stores; this lets GDAL
-also produce reference data through the same library that reads the source
-formats. Prototyping is underway in R bindings (gdalraster fork) where
-`GetRawBlockInfo()` is already exposed and the per-chunk call is confirmed
-working against netCDF over `/vsicurl/`; that prototype can inform the algorithm
-surface, but the algorithm itself is proposed for GDAL core so every binding and
-the CLI get it.
+This provides the reference-extraction step similar to what kerchunk and
+VirtualiZarr perform in Python. GDAL already consumes their reference stores and
+this allows GDAL-creation of tabular stores that are alike without conforming
+automatically to the JSON or partitioned and sharded forms used by those Python
+packages. 
