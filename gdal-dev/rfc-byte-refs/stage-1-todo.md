@@ -48,12 +48,7 @@ exact spelling against an existing algorithm that supports it.
 
 ### Progress callback
 
-`pfnProgress` is declared but never called. Required functionally (not
-cosmetically) before `/vsicurl` BRAN runs — without progress, the user has
-no signal the process is alive during a multi-minute remote run. Pattern:
-throttled call once per ~1% of total chunks, with `pfnProgress` return-false
-treated as user interrupt (`CPLE_UserInterrupt`, return false). Final
-`pfnProgress(1.0, ...)` after the loop.
+`pfnProgress` is enabled. 
 
 ### Remote-source end-to-end test
 
