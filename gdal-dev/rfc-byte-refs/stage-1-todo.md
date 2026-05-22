@@ -132,6 +132,15 @@ same guard correctly handles mosaic-VRT synthesized coordinate arrays
 arrays in one invocation) is deferred to a future stage. The required-arg
 discipline keeps Stage 1's contract narrow and observable.
 
+### Verified cases of raw block info 
+
+- from parquet pre-virtualized Zarr
+- from material Zarr (out or range block is info-get error)
+- from material Zarr but block is missing (null, 0 values for path, size, offset)
+- from mdim VRT of netcdf, indirection to remote source
+
+see here for details: https://github.com/mdsumner/gdal-r-python/blob/main/gdal-dev/rfc-byte-refs/format-generality-verification.md
+
 ---
 
 ## Open design questions (RFC discussion items)
