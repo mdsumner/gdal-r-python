@@ -204,6 +204,11 @@ Indicative arguments:
 - **Codec description** is driver-dependent text. The algorithm passes it
   through verbatim; it does not parse or normalise it (normalisation across
   drivers, if wanted, is separate future work).
+- **Chunk-coordinate encoding** Stage 1 emits per-dimension chunk coordinates as separate typed integer columns `(dim_0..dim_n, all Integer64)`,
+  with dimension names recorded in layer metadata `(DIM_N_NAME)`. The alternative of a single string-encoded column (e.g. '0.0.0.0' matching Zarr's on-disk key convention)
+  was not adopted: per-dimension typed columns preserve Parquet predicate pushdown for spatial-and-temporal range queries, which is the strongest
+  performance characteristic of the chosen output format. The trade-off is N columns instead of one and a schema whose width varies with array rank.
+  The dimension names are not used as column names directly to avoid sanitization concerns with arbitrary HDF5/netCDF names; named-column variants (e.g. --dim-names) could be added in a future stage.
 
 ## 7. Backward compatibility
 
