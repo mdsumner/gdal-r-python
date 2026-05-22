@@ -282,3 +282,225 @@ The algorithm hull is now transcription, not discovery:
 - block-size-0 arrays skipped with a clear message, not an error
 - out-of-range coordinates trusted to error from GDAL, no in-loop guard needed
 - `offset` / `size` fields are `OFTInteger64`
+
+
+# Evidence log addendum — HDF5 driver direct probe (Q1 coverage gap closed)
+
+*Appends to `evidence-log-phase0.md`. Closes the one open behavioural item in
+that log's status table: "HDF5 driver direct — open — coverage gap." It is no
+longer a gap.*
+
+---
+
+## Dataset probed
+
+| label | source | driver | role |
+|---|---|---|---|
+| HDFEOS-swath | `autotest/gdrivers/data/hdf5/dummy_HDFEOS_swath_chunked.h5`, array `/HDFEOS/SWATHS/MySwath/Data Fields/MyDataField` | **HDF5** | native HDF5-driver read; non-even chunking on all three dimensions |
+
+Provenance note: this is a fixture shipped in the GDAL autotest tree, opened by
+the **HDF5 driver** (not netCDF-over-HDF5 — distinct from the BRAN datasets in
+the main log, which are netCDF4 opened via the netCDF driver). A
+project-provided fixture is preferable to a crafted one for evidence — no
+question of the fixture being shaped to the expected answer.
+
+---
+
+## Q1 — Partial edge chunks: is ceil-division correct? — CONFIRMED for HDF5
+
+**RESOLVED for the HDF5 driver — ceil-division is correct. Trailing partial
+chunks are individually addressable, with size evidence corroborating.**
+
+Array `MyDataField`, dims/blocks `Band 20/3, AlongTrack 30/4, CrossTrack 40/6`
+— all three dimensions non-even. Ceil grid `[7,8,7]` = 392 chunks; floor grid
+`[6,7,6]` = 252. Floor-division would wrongly drop 140 chunks (>1/3 of the
+array).
+
+`GetRawBlockInfo` results:
+
+- origin `(0,0,0)` — full `3×4×6` chunk — file-backed, offset 45112, **size 144**
+- interior corner `(5,6,5)` — full `3×4×6` chunk — file-backed, offset 111983,
+  **size 142** (≈ origin, as expected for another full chunk)
+- trailing corner `(6,7,6)` — the all-partial corner chunk, extent `2×2×4` —
+  file-backed, offset 121797, **size 64**
+
+The trailing partial chunk returned a real file-backed result, not a decline
+or an absent. Its compressed size (64) is substantially smaller than a full
+chunk (~143), in the direction a reduced extent predicts: full chunk volume 72
+elements, corner partial 16 elements. The ratio is not linear (DEFLATE on tiny
+blocks does not scale linearly with element count) but the result is
+unambiguous — a real, smaller, file-backed trailing chunk.
+
+**Implication:** ceil-division (`n_chunks[i] = (dim_size[i] + block[i] - 1) //
+block[i]`) is now confirmed for **all three implementing driver families** —
+ZARR, netCDF, and HDF5 directly — each with corroborating size evidence. The
+"HDF5 expected by the same mechanism" caveat in the main log is discharged.
+
+## Bonus — out-of-range coordinate, HDF5
+
+`(7,0,0)`, one past the ceil extent in dim 0, raised
+`RuntimeError: GetRawBlockInfo() failed: array MyDataField: invalid block
+coordinate (7) for dimension 0` — the same loud, clean failure recorded for
+netCDF and ZARR in the main log. The "no in-loop bounds paranoia needed"
+conclusion now has HDF5 backing.
+
+## Codec shape, HDF5 (Q4 corroboration)
+
+`info` came back `['COMPRESSION=DEFLATE', 'ENDIANNESS=LITTLE']` — flat scalar
+`KEY=VALUE` strings, the same shape as the netCDF case in the main log's Q4.
+Consistent with "pass through verbatim, treat as opaque." Note `gdal mdim info`
+surfaced `structural_info: {"COMPRESSION": "DEFLATE"}` at the array level —
+worth remembering as a cross-check that the codec chain is an array-level
+property, reinforcing the "hoist to layer metadata" decision.
+
+---
+
+## Updated status table row
+
+| question | status |
+|---|---|
+| Q1 partial edge chunks (ceil) | **resolved** — ZARR + netCDF + **HDF5**, all size-corroborated |
+| HDF5 driver direct | **resolved** — `dummy_HDFEOS_swath_chunked.h5`, non-even on all 3 dims |
+
+The only remaining "open" item in the main log is the C++ accessor-spelling
+check against `gdal_priv.h` — which belongs at the start of writing the hull,
+not in Phase 0 probing. Phase 0 behavioural probing is now complete across all
+implementing drivers.
+
+
+
+# Evidence log addendum — C++ accessor reconciliation (Commit 1)
+
+*Appends to `evidence-log-phase0.md`. Closes the last "open" row in that log's
+status table: "C++ accessor spellings — open — confirm against the source tree
+before the hull compiles." Confirmed against the **v3.12.4 tag**. This is
+Commit 1 on the `feature/mdim-get-refs` integration branch — gated before the
+hull, so the hull is transcription.*
+
+---
+
+## Headers (corrected)
+
+The companion notes guessed `gcore/gdal_priv.h`. That was wrong — the
+multidimensional C++ classes are not there. Actual locations on v3.12.4:
+
+- **`gcore/gdal_multidim.h`** — the `GDALMDArray` C++ class, including the
+  `GetRawBlockInfo` C++ method.
+- **`gdal.h`** — the `GDALMDArrayRawBlockInfo` struct definition itself (inside
+  an `extern "C++"` block so both the C and C++ APIs share one struct), plus
+  the C-API entry points.
+
+## The C++ method
+
+```cpp
+virtual bool GDALMDArray::GetRawBlockInfo(
+    const uint64_t *panBlockCoordinates,
+    GDALMDArrayRawBlockInfo &info) const;
+```
+
+- block coordinates: a raw `const uint64_t *`, **not** a `std::vector` — the
+  hull builds a `uint64_t` array (or `std::vector<uint64_t>` + `.data()`) sized
+  to the array's dimension count, one per chunk. The ceil-enumeration produces
+  exactly these.
+- result: filled via the `GDALMDArrayRawBlockInfo &` out-reference.
+- `bool` return: success/failure.
+- `virtual` — confirms it is the per-driver-overridden primitive.
+- `const` — does not mutate the array.
+
+## The struct — `GDALMDArrayRawBlockInfo` (since 3.12)
+
+Plain-old-data struct with **public members** (not a class with accessors —
+the Python proxy's `Get*()` names are a SWIG wrapper, not the C++ surface):
+
+| Python proxy (what `probe_getrawblockinfo_v2.py` read) | **C++ member (what the hull writes)** | type | notes |
+|---|---|---|---|
+| `info.GetFilename()` | `info.pszFilename` | `char *` | **nullable** — null is the absence/inline signal |
+| `info.GetOffset()` | `info.nOffset` | `uint64_t` | `0` is a legal value, never an absence signal |
+| `info.GetSize()` | `info.nSize` | `uint64_t` | encoded byte length; **also** the inline-buffer length |
+| `info.GetInfo()` | `info.papszInfo` | `char **` | null, or null-terminated string list — codec description |
+| `info.GetInlineData()` | `info.pabyInlineData` | `GByte *` | null when not inline; buffer of `nSize` bytes when set |
+
+## Questions this closes
+
+### Inline-data length (flagged by name in the main log as unproven)
+
+**RESOLVED — there is no separate length field. `pabyInlineData` is a buffer
+of `nSize` bytes.** The struct doc comment states it explicitly: "In-memory
+buffer of nSize bytes. When this is set, pszFilename and nOffset are set to
+NULL." So `nSize` serves double duty — encoded byte length for file-backed
+chunks, inline-buffer length for inline chunks. Stage 1b reads
+`pabyInlineData` for exactly `nSize` bytes; no second field to consult.
+
+### Three-state classification (Q2 / Q3) against the real fields
+
+- **present (file-backed):** `pszFilename != nullptr`
+- **absent (sparse):** `pszFilename == nullptr && pabyInlineData == nullptr`
+  (and `nSize == 0`)
+- **inline:** `pszFilename == nullptr && pabyInlineData != nullptr`
+  (and `nSize > 0`)
+
+The main log's detection rule — null filename, **never** `offset == 0` — is
+correct against the real struct: `nOffset` is a plain `uint64_t` with no
+sentinel semantics; `pszFilename` is the nullable one.
+
+### Copy-semantics hazard (newly surfaced by the struct definition)
+
+The struct owns heap memory (`pszFilename`, `papszInfo`, `pabyInlineData` are
+owned pointers; the struct has a destructor, `clear()`, and full copy/move
+constructors and assignment operators). Two consequences for the hull:
+
+- **The copy constructor has a sharp documented failure mode:** on allocation
+  failure during copy, `pabyInlineData` becomes NULL **but `nSize` stays
+  non-zero**. Therefore the hull classifies inline chunks by
+  `pabyInlineData != nullptr`, **not** by `nSize > 0`. Stage 1 does not touch
+  inline bytes, but writing the Stage 1 classification this way means Stage 1b
+  inherits the safe check for free.
+- **Enumeration loop:** reuse one `GDALMDArrayRawBlockInfo`, call `clear()`
+  between chunks (or rely on per-iteration destruction). Do not accumulate
+  filled structs.
+
+### papszInfo is a GDAL string list (Q4 corroboration)
+
+`char **`, null-terminated — `CSL*` territory. The struct itself makes no
+attempt to type it, which vindicates the "pass through verbatim, treat as
+opaque" decision at the type level. Per-row field: join with a `CSL` helper.
+Layer metadata: hoist as-is. The algorithm never parses it.
+
+### C-API lifetime helpers — not the hull's concern
+
+`GDALMDArrayRawBlockInfoCreate()` / `GDALMDArrayRawBlockInfoRelease()` exist
+for C-side lifetime management. The C++ algorithm stack-allocates the struct
+and lets RAII handle it. Noted for completeness; irrelevant to the hull.
+
+### dtype accessor (C++ side)
+
+Still to confirm in `gdal_multidim.h`: the C++ equivalent of the Python
+`GetDataType().GetNumericDataType()` → name route (the main log resolved the
+Python side; `GetName()` is empty for numeric types). `GDALExtendedDataType`
+is in the same header — confirm its numeric-type accessor while writing the
+array-level-metadata part of the hull. Low risk; not a blocker for the chunk
+enumeration itself.
+
+---
+
+## Updated status table row
+
+| question | status |
+|---|---|
+| C++ accessor spellings | **resolved** — `gdal.h` struct + `gdal_multidim.h` method, v3.12.4 |
+
+**Phase 0 is complete.** Every behavioural question (Q1–Q5 + bonus) is
+resolved across all three implementing drivers; the C++ surface the hull
+compiles against is now confirmed. The hull is transcription:
+
+- enumeration: ceil-division
+- method: `GetRawBlockInfo(const uint64_t*, GDALMDArrayRawBlockInfo&) const`,
+  `bool` return
+- fields: `pszFilename` / `nOffset` / `nSize` / `papszInfo` /
+  `pabyInlineData`
+- absence: `pszFilename == nullptr`, never `nOffset == 0`
+- inline classification: `pabyInlineData != nullptr` (not `nSize > 0` —
+  copy-failure hazard)
+- inline length: `nSize` (no separate field)
+- `papszInfo`: opaque `char **`, forwarded verbatim
+- one struct reused + `clear()`ed per chunk
