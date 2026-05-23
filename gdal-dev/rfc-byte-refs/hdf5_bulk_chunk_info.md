@@ -71,6 +71,81 @@ bool GetAllRawBlockInfo(
     std::vector<GDALMDArrayRawBlockInfo> &aoBlockInfo) const override;
 ```
 
+```cpp
+bool HDF5Array::GetAllRawBlockInfo(
+    std::vector<GDALMDArrayRawBlockInfo> &aoBlockInfo) const
+{
+  aoBlockInfo.clear();
+
+#if (defined(H5_VERS_MAJOR) &&                                                 \
+  (H5_VERS_MAJOR >= 2 || (H5_VERS_MAJOR == 1 && H5_VERS_MINOR > 10) ||         \
+    (H5_VERS_MAJOR == 1 && H5_VERS_MINOR == 10 && H5_VERS_RELEASE >= 5)))
+
+    const auto anBlockSize = GetBlockSize();
+  if (anBlockSize.empty() || anBlockSize[0] == 0)
+  {
+    // Contiguous/compact: single block, delegate to GetRawBlockInfo
+    std::vector<uint64_t> zeros(m_dims.size(), 0);
+    GDALMDArrayRawBlockInfo info;
+    if (!GetRawBlockInfo(zeros.data(), info))
+      return false;
+    aoBlockInfo.push_back(std::move(info));
+    return true;
+  }
+
+  HDF5ChunkIterData buf;
+  buf.nRank = static_cast<int>(GetDimensionCount());
+  buf.osFilename = m_poShared->GetFilename();
+
+  // Resolve userblock offset once
+//#if !(/* < 1.14.4 guard */)
+  const hid_t nListId = H5Fget_create_plist(m_poShared->GetHDF5());
+  if (nListId > 0)
+  {
+    hsize_t nUserBlockSize = 0;
+    H5Pget_userblock(nListId, &nUserBlockSize);
+    buf.userBlockOffset = nUserBlockSize;
+    H5Pclose(nListId);
+  }
+//#endif
+
+  HDF5_GLOBAL_LOCK();
+  const herr_t herr = H5Dchunk_iter(
+    m_hArray, H5P_DEFAULT, ChunkIterCallback, &buf);
+  if (herr < 0)
+  {
+    CPLError(CE_Failure, CPLE_AppDefined,
+             "GetAllRawBlockInfo(): H5Dchunk_iter() failed for array %s",
+             GetName().c_str());
+    return false;
+  }
+
+  const hsize_t nChunks = buf.anSizes.size();
+  aoBlockInfo.reserve(nChunks);
+
+  for (hsize_t k = 0; k < nChunks; ++k)
+  {
+    GDALMDArrayRawBlockInfo info;
+    info.pszFilename = CPLStrdup(buf.osFilename.c_str());
+    info.nOffset = (buf.anAddrs[k] == HADDR_UNDEF ? 0 : buf.anAddrs[k])
+      + buf.userBlockOffset;
+    info.nSize   = buf.anSizes[k];
+    info.papszInfo =
+      GetFilterInfo(m_hArray, buf.anFilterMasks[k]).StealList();
+    // AddExtraInfo equivalent — endianness is array-level, set once
+    // and could be hoisted out of the loop if needed
+    aoBlockInfo.push_back(std::move(info));
+  }
+  return true;
+
+#else
+  CPLDebug("HDF5", "H5Dchunk_iter() requires HDF5 >= 1.10.5");
+  return false;
+#endif
+}
+
+```
+
 The implementation (line ~2031) handles two cases:
 
 - **Contiguous/compact layout** (`anBlockSize[0] == 0`): delegates to the
