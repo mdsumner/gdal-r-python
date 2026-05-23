@@ -2,8 +2,7 @@
 
 ## Background
 
-`GDALMDArray::GetRawBlockInfo()` (introduced alongside the `gdal mdim get-refs`
-algorithm) returns the file offset, byte size, and filter metadata for a single
+`GDALMDArray::GetRawBlockInfo()`  returns the file offset, byte size, and filter metadata for a single
 chunk of a multidimensional array, identified by its N-dimensional block
 coordinates.  The algorithm loops over all chunks in linear order, calling
 `GetRawBlockInfo()` once per chunk.  For the HDF5 driver this translates to one
