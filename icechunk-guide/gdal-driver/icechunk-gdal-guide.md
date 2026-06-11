@@ -145,6 +145,11 @@ gdal mdim info /vsicurl/https://data.source.coop/bkr/metoffice/metoffice_global_
   is a *logical* name; the physical store is
   `/vsis3/earthmover-icechunk-era5/icechunkV2` (region `us-east-1`). Pointing
   `/vsis3/` at the catalog name gives `BucketNotFound`.
+- **source.coop encodes the region in the host but still needs `AWS_REGION`.**
+  A bucket like `us-west-2.opendata.source.coop` *looks* self-describing, but
+  GDAL does not parse the region out of the host — you must still pass
+  `--config AWS_REGION us-west-2`. (https access via `/vsicurl/https://...`
+  sidesteps this; `/vsis3/` needs the explicit region.)
 
 ---
 
@@ -158,6 +163,8 @@ gdal mdim info /vsicurl/https://data.source.coop/bkr/metoffice/metoffice_global_
 | Opens, lists metadata, **but data read fails on codec** | The Zarr driver lacks that codec. **pcodec** is the common one (Earthmover ERA5 uses it). | No fix until GDAL's Zarr driver gains the codec. Metadata works; values don't. |
 | `grid not recognized` / "not a grid" | Grouped store, or coords/CRS the consumer didn't resolve. | Point at the specific group; check `spatial_ref`/`GeoTransform`/`dimension_names`. |
 | Variables hidden / all-hidden | Store converted Zarr **v2→v3** without migrating `_ARRAY_DIMENSIONS` → `dimension_names`. | A store-side metadata gap (e.g. `era5_weatherbench2`); not a GDAL bug. |
+| `manifest extents has not expected dimension count` on a `crs`/`spatial_ref` array | The driver's manifest extent-rank check appears not to allow a **0-D (scalar) grid-mapping container** (standard CF/GeoZarr). One such variable aborts the *whole* open. | Driver-side; reportable. (Seen on the v1-layout ISMIP6 AIS store: `config.yaml`+`refs/`.) Confirm the offending array's `shape` is `[]` to be sure. |
+| `403` then `too small file` when opening a `ZARR:"…":/array` subdataset | Almost always your **shell wrapped the line** and dropped the trailing `--config` flags (look for `-bash: --config: command not found`), so the request went unsigned → S3 `403` → driver reads the error body as a tiny "repo". | Re-run as **one line** with `--config` attached. Only if it still 403s with config properly applied is it a real config-propagation bug through the `ZARR:`/`/vsiicechunk/` re-entry. |
 
 ### The "static mask" gotcha (and why it's *not* a bug)
 A land-sea mask or other mostly-constant field often has **unmaterialized
