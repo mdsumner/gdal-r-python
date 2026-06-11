@@ -1,0 +1,95 @@
+{
+  "description": "Public Icechunk stores and the addressing forms accepted by GDAL's Icechunk driver (rouault/gdal 'icechunk' branch, PR-as-submitted, commit 8200c07cb3e). The driver delegates array/codec work to GDAL's Zarr driver via a /vsiicechunk/ VSI handler; it Identifies a store by ICECHUNK: prefix, by the 'repo' flatbuffer header, or by a directory containing snapshots/ + transactions/ + (repo OR refs/).",
+  "verified": "2026-06-11",
+  "source_commit": "8200c07cb3e",
+  "icechunk_v2_root_layout": ["repo", "chunks", "manifests", "overwritten", "snapshots", "transactions"],
+  "addressing_forms": {
+    "preferred_bare_store_root": {
+      "form": "<store-root>",
+      "example": "gdal mdim info /vsis3/<bucket>/<prefix>",
+      "why": "PR-as-submitted: Identify() detects a directory holding snapshots/ + transactions/ + (repo OR refs/). No braces, no /repo, no /vsiicechunk/. GDAL interrogates the base URI directly. This is the canonical form to lead with."
+    },
+    "connection_prefix": {
+      "form": "ICECHUNK:<inner-path>",
+      "example": "gdal mdim info ICECHUNK:/vsis3/<bucket>/<prefix>",
+      "why": "Explicit driver selection (GDAL_DMD_CONNECTION_PREFIX). Forces the Icechunk driver regardless of Identify heuristics."
+    },
+    "repo_file": {
+      "form": "<store-root>/repo",
+      "example": "gdal mdim info /vsis3/<bucket>/<prefix>/repo",
+      "why": "Identify() sniffs the repo flatbuffer header (signature + impl name + spec_version + FILE_TYPE_REPO_INFO). Works on older dev builds too."
+    },
+    "vsiicechunk_lowlevel": {
+      "form": "/vsiicechunk/{<inner-path-to-repo-FILE>[?branch=<name>|?tag=<name>]}[/optional_key]",
+      "example": "gdal mdim info \"/vsiicechunk/{/vsis3/<bucket>/<prefix>/repo}\"",
+      "why": "Direct VSI handler. Brace-wrap the path to the 'repo' FILE (not the root). Internally what the driver wraps to as ZARR:/vsiicechunk/{...}. Use for explicit branch/tag and to understand the resolution; quote it (braces/? are shell metacharacters)."
+    },
+    "single_array_subdataset": {
+      "form": "ZARR:\"/vsiicechunk/{<inner>/repo}\":/<array_name>",
+      "why": "Address one variable; shown as SUBDATASET_n_NAME in gdalinfo output."
+    },
+    "branch_tag": {
+      "branch": "...repo?branch=<name>  (default 'main' when omitted)",
+      "tag": "...repo?tag=<name>",
+      "cli": "gdal driver icechunk list-branches <store> ; gdal driver icechunk list-tags <store>"
+    }
+  },
+  "credentials_note": "All public stores below read anonymously. Pass --config AWS_NO_SIGN_REQUEST YES (and --config AWS_REGION <region>) for S3, or --config GS_NO_SIGN_REQUEST YES for GCS. The /vsiicechunk/ wrapper carries no credentials; they apply to the inner /vsis3//vsigs/ fetch. Chunk locations resolve across s3://, gs://, gcs://, az://, azure://, http(s)://.",
+  "codec_note": "Decode is delegated to GDAL's Zarr driver, so codec support == Zarr driver's. blosc/zstd/sharding/crc32c read fine; pcodec is NOT supported -> pcodec stores enumerate metadata but fail on data-chunk reads until GDAL Zarr gains pcodec.",
+  "stores": [
+    {
+      "name": "dynamical-ecmwf-aifs-single",
+      "title": "dynamical.org ECMWF AIFS single forecast v0.1.0",
+      "region": "us-west-2",
+      "anonymous": true,
+      "reads_without_pcodec": true,
+      "status": "CONFIRMED full hierarchy (18 subdatasets) + metadata read; blosc/zstd/sharding codecs so DATA reads should work.",
+      "store_root": "/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk",
+      "bare":        "gdal mdim info /vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk --config AWS_NO_SIGN_REQUEST YES --config AWS_REGION us-west-2",
+      "icechunk_prefix": "ICECHUNK:/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk",
+      "repo_file":   "/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk/repo",
+      "vsiicechunk": "/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk/repo}",
+      "single_array_example": "ZARR:\"/vsiicechunk/{/vsis3/dynamical-ecmwf-aifs-single/ecmwf-aifs-single-forecast/v0.1.0.icechunk/repo}\":/temperature_2m",
+      "main_snapshot_observed": "AMJ2HGEPZ6Q6JRKNPF30",
+      "array_shape_observed": "[3182 x 61 x 721 x 1440] Float32 (init_time x lead_time x lat x lon); shard chunk_shape [1,61,241,240]; compressor sharding_indexed -> bytes -> blosc(zstd,shuffle), index crc32c",
+      "arrays_observed": ["dew_point_temperature_2m","downward_long_wave_radiation_flux_surface","downward_short_wave_radiation_flux_surface","geopotential_height_500hpa","geopotential_height_850hpa","geopotential_height_925hpa","precipitation_surface","pressure_reduced_to_mean_sea_level","pressure_surface","temperature_2m","temperature_850hpa","temperature_925hpa","total_cloud_cover_atmosphere","valid_time","wind_u_100m","wind_u_10m","wind_v_100m","wind_v_10m"]
+    },
+    {
+      "name": "earthmover-public-era5",
+      "title": "Earthmover public ERA5 (ARCO, dual-chunked, pcodec, daily-updating free tier)",
+      "region": "us-east-1",
+      "anonymous": true,
+      "reads_without_pcodec": false,
+      "status": "repo+snapshot resolution CONFIRMED (snapshot GBED7WGX3YHZKVY53DW0). Metadata should enumerate via bare root; DATA reads BLOCKED on pcodec.",
+      "catalog_name_NOT_a_bucket": "earthmover-public/era5  (Arraylake logical name; do NOT use as an S3 bucket)",
+      "store_root": "/vsis3/earthmover-icechunk-era5/icechunkV2",
+      "bare":        "gdal mdim info /vsis3/earthmover-icechunk-era5/icechunkV2 --config AWS_NO_SIGN_REQUEST YES --config AWS_REGION us-east-1",
+      "icechunk_prefix": "ICECHUNK:/vsis3/earthmover-icechunk-era5/icechunkV2",
+      "repo_file":   "/vsis3/earthmover-icechunk-era5/icechunkV2/repo",
+      "vsiicechunk": "/vsiicechunk/{/vsis3/earthmover-icechunk-era5/icechunkV2/repo}",
+      "single_array_example": "ZARR:\"/vsiicechunk/{/vsis3/earthmover-icechunk-era5/icechunkV2/repo}\":/single/temporal/t2m",
+      "main_snapshot_observed": "GBED7WGX3YHZKVY53DW0",
+      "groups_observed": ["single/spatial","single/temporal","pressure/spatial","pressure/temporal","500hPa/spatial","500hPa/temporal"],
+      "notes": "lsm is a static (lat,lon) land-sea mask, fill_value=NaN, chunk [0,0] unmaterialized (Python returns NaN). Missing-chunk->fill is handled correctly in current driver (GetChunkRef returns empty -> VSI Open/Stat return not-found -> Zarr synthesizes fill)."
+    },
+    {
+      "name": "icechunk-public-data-glad",
+      "title": "Icechunk public sample data (GLAD) - from Even's example list (UNVERIFIED here)",
+      "region": "unknown (try us-east-1)",
+      "anonymous": true,
+      "reads_without_pcodec": null,
+      "status": "TODO verify: appeared as a commented example; confirm region + that it is an Icechunk store root.",
+      "store_root": "/vsis3/icechunk-public-data/v1/glad",
+      "bare": "gdal mdim info /vsis3/icechunk-public-data/v1/glad --config AWS_NO_SIGN_REQUEST YES",
+      "notes": "Was 'gdal mdim info /vsis3/icechunk-public-data/v1/glad --config AWS_NO_SIGN_REQUEST YES'. Verify region; check root layout (snapshots/ transactions/ repo|refs)."
+    }
+  ],
+  "related_non_icechunk_zarr_examples": [
+    {
+      "name": "arco-era5-gcs",
+      "title": "Google ARCO-ERA5 (plain Zarr v3 on GCS, NOT Icechunk) - useful Zarr-driver comparison",
+      "open": "gdal mdim info /vsigs/gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3 --config GS_NO_SIGN_REQUEST YES",
+      "notes": "Plain Zarr store, opened directly by the Zarr driver (no Icechunk). Good baseline to compare Zarr-over-Icechunk vs Zarr-on-object-store."
+    }
+  ]
+}

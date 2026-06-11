@@ -1,0 +1,337 @@
+{
+  "description": "Zarr/Icechunk public test datasets collected by @eeholmes for the gridlook visualization project (github discussion #41, converted from issue #26). NOT all Icechunk. Captured verbatim-ish for exploration against GDAL's Zarr and Icechunk drivers. Status reflects gridlook (browser/zarrita) behaviour, NOT GDAL - re-test in GDAL.",
+  "source": "https://github.com/eeholmes/gridlook (discussion #41)",
+  "captured": "2026-06-11",
+  "caveats": [
+    "status_group/status are gridlook's results (JS/zarrita/CORS-sensitive); GDAL may differ (no CORS constraint, different codec support).",
+    "is_icechunk is a heuristic (format text or .icechunk url or icechunk root layout).",
+    "For Icechunk entries, the GDAL connection name is the directory (bare store root); see the companion guide.",
+    "source.coop URLs are https (use /vsicurl/); s3:// dynamical/earthmover URLs use /vsis3/ with region + AWS_NO_SIGN_REQUEST."
+  ],
+  "counts": {
+    "total": 35,
+    "icechunk": 24,
+    "by_status_group": {
+      "good": 21,
+      "probably_fixable": 7,
+      "bad": 7
+    }
+  },
+  "datasets": [
+    {
+      "title": "OGS ARCO Ocean",
+      "url": "https://ogs-arco-ocean.s3.eu-south-1.amazonaws.com/dataset/tres=1d/res=0p25/levels=10/",
+      "format": "Zarr v2",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "CMIP6 HighResMIP HadGEM3-GC31-HM tas",
+      "url": "https://storage.googleapis.com/cmip6/CMIP6/HighResMIP/MOHC/HadGEM3-GC31-HM/highresSST-present/r1i1p1f1/Amon/tas/gn/v20170831/",
+      "format": "Zarr v2",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "Hurricane Florence ERA5",
+      "url": "https://atlantis-vis-o.s3-ext.jc.rl.ac.uk/hurricanes/era5/florence",
+      "format": "Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "CHLA-Z",
+      "url": "https://storage.googleapis.com/nmfs_odp_nwfsc/CB/fish-pace-datasets/chla-z/zarr",
+      "format": "Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": "Loads but very slow and often hangs"
+    },
+    {
+      "title": "dynamical NOAA GFS",
+      "url": "https://dynamical-noaa-gfs.s3.us-west-2.amazonaws.com/noaa-gfs-forecast/v0.2.7.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-west-2"
+    },
+    {
+      "title": "dynamical DWD ICON EU",
+      "url": "https://dynamical-dwd-icon-eu.s3.us-west-2.amazonaws.com/dwd-icon-eu-forecast-5-day/v0.2.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-west-2"
+    },
+    {
+      "title": "dynamical ECMWF AIFS single",
+      "url": "https://dynamical-ecmwf-aifs-single.s3.us-west-2.amazonaws.com/ecmwf-aifs-single-forecast/v0.1.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-west-2; CONFIRMED in GDAL Icechunk driver"
+    },
+    {
+      "title": "Met Office global wave",
+      "url": "https://data.source.coop/bkr/metoffice/metoffice_global_wave.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "source.coop / https access"
+    },
+    {
+      "title": "Met Office deterministic 6-hourly",
+      "url": "https://data.source.coop/bkr/metoffice/metoffice_global_deterministic_10km_6hourly_24hr.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "GEOS 15 min",
+      "url": "https://data.source.coop/bkr/geos/geos_15min.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "Met Office deterministic 11 hour",
+      "url": "https://data.source.coop/bkr/metoffice/metoffice_global_deterministic_10km_11hour.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "Met Office deterministic 10 km",
+      "url": "https://data.source.coop/bkr/metoffice/metoffice_global_deterministic_10km.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "EarthMover ERA5 (spatial group)",
+      "url": "https://earthmover-icechunk-era5.s3.us-east-1.amazonaws.com/era5_surface_aws/spatial",
+      "format": "grouped Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-east-1; grouped root; pcodec -> GDAL data reads blocked"
+    },
+    {
+      "title": "EarthMover ERA5 (root)",
+      "url": "https://earthmover-icechunk-era5.s3.us-east-1.amazonaws.com/era5_surface_aws",
+      "format": "grouped Icechunk, Zarr v3",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-east-1; grouped root; pcodec"
+    },
+    {
+      "title": "NOAA HRRR",
+      "url": "https://dynamical-noaa-hrrr.s3.us-west-2.amazonaws.com/noaa-hrrr-analysis/v0.2.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "slow_load",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "NOAA MRMS",
+      "url": "https://dynamical-noaa-mrms.s3.amazonaws.com/noaa-mrms-conus-analysis-hourly/v0.3.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "slow_load",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ECMWF AIFS ensemble",
+      "url": "https://dynamical-ecmwf-aifs-ens.s3.us-west-2.amazonaws.com/ecmwf-aifs-ens-forecast/v0.1.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "slow_load",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ECMWF IFS ensemble",
+      "url": "https://dynamical-ecmwf-ifs-ens.s3.us-west-2.amazonaws.com/ecmwf-ifs-ens-forecast-15-day-0-25-degree/v0.1.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "slow_load",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "NOAA GEFS analysis",
+      "url": "https://dynamical-noaa-gefs.s3.us-west-2.amazonaws.com/noaa-gefs-analysis/v0.1.2.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "slow_load",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ISMIP6 AIS",
+      "url": "https://data.source.coop/englacial/ismip6/icechunk-ais",
+      "format": "Icechunk, Zarr v3",
+      "status": "grouped root and grid not recognized",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ISMIP6 AIS grouped example",
+      "url": "https://data.source.coop/englacial/ismip6/icechunk-ais/combined/AWI_PISM1/exp05",
+      "format": "Icechunk, grouped Zarr v3",
+      "status": "grid not recognized",
+      "status_group": "probably_fixable",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "NOAA GEFS 35-day forecast (icechunk)",
+      "url": "https://dynamical-noaa-gefs.s3.us-west-2.amazonaws.com/noaa-gefs-forecast-35-day/v0.2.0.icechunk/",
+      "format": "Icechunk, Zarr v3",
+      "status": "no fetch / fails to load",
+      "status_group": "bad",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "NOAA GEFS 35-day forecast (zarr)",
+      "url": "https://data.dynamical.org/noaa/gefs/forecast-35-day/latest.zarr",
+      "format": "Zarr v3",
+      "status": "fails to load",
+      "status_group": "bad",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "AOML 2012",
+      "url": "https://data.source.coop/bkr/aoml/aoml_2012.icechunk",
+      "format": "Icechunk, Zarr v3",
+      "status": "will not open; not a grid",
+      "status_group": "bad",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ERA5 single level (arco v2)",
+      "url": "https://storage.googleapis.com/gcp-public-data-arco-era5/co/single-level-reanalysis.zarr-v2",
+      "format": "Zarr v2",
+      "status": "no CORS",
+      "status_group": "bad",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "MUR HighRes SST",
+      "url": "https://mur-sst.s3.us-west-2.amazonaws.com/zarr-v1/",
+      "format": "Zarr v1?",
+      "status": "array buffer allocation failed",
+      "status_group": "bad",
+      "is_icechunk": false,
+      "notes": ""
+    },
+    {
+      "title": "Atlantis NEMO currents uo",
+      "url": "https://atlantis-vis-o.s3-ext.jc.rl.ac.uk/nemotest101/currents/uo.zarr",
+      "format": "Zarr v2",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": "regular"
+    },
+    {
+      "title": "Atlantis NEMO sos_abs",
+      "url": "https://atlantis-vis-o.s3-ext.jc.rl.ac.uk/nemotest101/T1d/sos_abs.zarr",
+      "format": "Zarr v2",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": "regular"
+    },
+    {
+      "title": "CarbonPlan multi-level virtual hybrid icechunk",
+      "url": "https://carbonplan-share.s3.us-west-2.amazonaws.com/zarr-layer-examples/pipeline/multi_level_virtual_hybrid_icechunk.icechunk",
+      "format": "Icechunk",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-west-2; VIRTUAL chunk refs - tests virtual-reference morphing"
+    },
+    {
+      "title": "CarbonPlan antarctic_era5",
+      "url": "https://carbonplan-share.s3.us-west-2.amazonaws.com/zarr-layer-examples/antarctic_era5.zarr",
+      "format": "Zarr",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": false,
+      "notes": "polar"
+    },
+    {
+      "title": "Icechunk public GLAD",
+      "url": "https://icechunk-public-data.s3.us-east-1.amazonaws.com/v1/glad/",
+      "format": "Icechunk, Zarr v3",
+      "status": "good (zarrita/python)",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "region us-east-1; x/y/spatial_ref, GeoTransform -180 0.00025 0 80 0 -0.00025, EPSG:4326"
+    },
+    {
+      "title": "DMI Alaska HRRR",
+      "url": "https://data.source.coop/bkr/dmi/alaska_hrrr.icechunk",
+      "format": "Icechunk",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": "source.coop; gridlook used extra ::-delimited params"
+    },
+    {
+      "title": "Norway radar precip",
+      "url": "https://data.source.coop/bkr/precipradar/norway_radar.icechunk",
+      "format": "Icechunk",
+      "status": "good",
+      "status_group": "good",
+      "is_icechunk": true,
+      "notes": ""
+    },
+    {
+      "title": "ERA5 weatherbench2 (data.icechunk.cloud)",
+      "url": "https://data.icechunk.cloud/v1/era5_weatherbench2/",
+      "format": "Icechunk, Zarr (v2->v3 converted)",
+      "status": "wontfix; _ARRAY_DIMENSIONS not migrated to dimension_names",
+      "status_group": "bad",
+      "is_icechunk": true,
+      "notes": "Useful TEST of zarr v2->v3 dimension_names migration gap"
+    },
+    {
+      "title": "USGS CONUS DEM 10m",
+      "url": "https://carbonplan-share.s3.us-west-2.amazonaws.com/zarr-layer-examples/USGS-CONUS-DEM-10m.zarr",
+      "format": "Zarr (sharding indexed)",
+      "status": "no work - sharding indexed",
+      "status_group": "bad",
+      "is_icechunk": false,
+      "notes": ""
+    }
+  ]
+}
