@@ -196,10 +196,11 @@
       "title": "ISMIP6 AIS",
       "url": "https://data.source.coop/englacial/ismip6/icechunk-ais",
       "format": "Icechunk, Zarr v3",
-      "status": "grouped root and grid not recognized",
+      "status": "GDAL: crs FIXED; data reads blocked on numcodecs.shuffle + numcodecs.zlib (v3 dispatch gap)",
       "status_group": "probably_fixable",
       "is_icechunk": true,
-      "notes": ""
+      "notes": "crs 0-D extent issue FIXED. Now data arrays fail: 'Unsupported codec: numcodecs.shuffle'. Confirmed codec chain on /combined/AWI_PISM1/exp02/ligroundf (float32): bytes(little) -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). GDAL v3 codec dispatch lacks standalone numcodecs.shuffle (impl EXISTS but only wired into the zarr_v2 path via ZarrGetShuffleDecompressor) and likely numcodecs.zlib (alias to existing zlib/gzip). Errors now repeat per-array instead of aborting. Many data vars affected (acabf, lithk, topg, vel* ...). Pattern: v2->v3 converted store using numcodecs.* namespace; v3 dispatch built around core v3 names.",
+      "gdal_verified": true
     },
     {
       "title": "ISMIP6 AIS grouped example",
@@ -343,10 +344,10 @@
       "region": "us-west-2",
       "format": "Icechunk v1 (config.yaml+refs/), Zarr v3",
       "is_icechunk": true,
-      "status": "GDAL: ABORTS open - crs 0-D manifest extent dim-count",
+      "status": "GDAL: crs FIXED; data reads blocked on numcodecs.shuffle + numcodecs.zlib (v3 dispatch gap)",
       "status_group": "probably_fixable",
       "gdal_verified": true,
-      "notes": "v1 layout (config.yaml, refs/). gdal mdim info aborts: array .../ctrl_proj_std/crs 'manifest extents has not expected dimension count'. Suspected 0-D CF/GeoZarr grid-mapping container; one bad var aborts whole open. SHAPE CONFIRMATION PENDING."
+      "notes": "crs 0-D extent issue FIXED. Now data arrays fail: 'Unsupported codec: numcodecs.shuffle'. Confirmed codec chain on /combined/AWI_PISM1/exp02/ligroundf (float32): bytes(little) -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). GDAL v3 codec dispatch lacks standalone numcodecs.shuffle (impl EXISTS but only wired into the zarr_v2 path via ZarrGetShuffleDecompressor) and likely numcodecs.zlib (alias to existing zlib/gzip). Errors now repeat per-array instead of aborting. Many data vars affected (acabf, lithk, topg, vel* ...). Pattern: v2->v3 converted store using numcodecs.* namespace; v3 dispatch built around core v3 names."
     },
     {
       "title": "Antarctica fast flow mask 50m (source.coop englacial demogorgn)",
@@ -355,10 +356,14 @@
       "region": "us-west-2",
       "format": "Icechunk, Zarr v3",
       "is_icechunk": true,
-      "status": "GDAL: opens cleanly (mdim info full tree)",
+      "status": "GDAL: WORKS end-to-end (mdim + raster subdataset read)",
       "status_group": "good",
       "gdal_verified": true,
-      "notes": "CONFIRMED in GDAL Icechunk driver. CURVILINEAR: lat & lon are 2D (y,x) 12445^2 geolocation arrays; x,y are 1D projected axes; fast_flow_mask Int64 blosc/zstd. No crs variable (so does NOT hit the ISMIP6 abort). gdalinfo subdataset open: re-run on ONE line with --config; earlier 403 was shell line-continuation dropping --config."
+      "notes": "CONFIRMED full read in GDAL. fast_flow_mask Int64, 12445x12445, blosc/zstd (shuffle as blosc PARAM, supported). gdal raster info on ZARR:\"/vsiicechunk/{...}\":/fast_flow_mask gives Origin (-2800225,2800225) PixelSize (450,-450) -> Antarctic Polar Stereographic (EPSG:3031 extent), NoData 0. CURVILINEAR siblings: lat/lon are 2D (y,x); x/y are 1D projected axes. Earlier 403 on subdataset open was SHELL line-wrap dropping --config (NOT a bug) - works on one line. Check whether CRS WKT/EPSG is attached (GeoZarr grid-mapping) vs geotransform-only."
     }
+  ],
+  "conformance_notes": [
+    "Icechunk writer skew: 'ic-0.3.16' (no public pip tag) wrote scalar-array manifests[0].extents=[{0,1}] instead of empty extents[]. Recent Icechunk writes empty. A conformance assertion: scalar (0-D) arrays MUST have empty manifest extents[]. GDAL Icechunk driver made tolerant of the non-empty case (2026-06).",
+    "GDAL Zarr v3 codec dispatch is built around CORE v3 codec names (bytes, blosc, gzip, zstd, crc32c, sharding_indexed). v2->v3 converted Icechunk stores declare codecs under the numcodecs.* namespace (numcodecs.shuffle, numcodecs.zlib, likely numcodecs.delta/fixedscaleoffset/quantize). Standalone shuffle IS implemented (zarr_filters.cpp, ZarrGetShuffle{Compressor,Decompressor}) but only consumed in zarr_v2_array.cpp. ROBUST FIX: handle the numcodecs.* prefix as a family in the v3 dispatch, mapping to existing implementations; shuffle must be inserted as a bytes->bytes filter at the correct pipeline position (between the bytes codec and the compressor), reading configuration.elementsize (default 4). Reproducer: ismip6 icechunk-ais /combined/AWI_PISM1/exp02/ligroundf."
   ]
 }
