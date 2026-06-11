@@ -196,10 +196,10 @@
       "title": "ISMIP6 AIS",
       "url": "https://data.source.coop/englacial/ismip6/icechunk-ais",
       "format": "Icechunk, Zarr v3",
-      "status": "GDAL: crs FIXED; data reads blocked on numcodecs.shuffle + numcodecs.zlib (v3 dispatch gap)",
-      "status_group": "probably_fixable",
+      "status": "GDAL: crs FIXED; data blocked on NON-STANDARD numcodecs.* codecs (WONTFIX upstream decision)",
+      "status_group": "bad",
       "is_icechunk": true,
-      "notes": "crs 0-D extent issue FIXED. Now data arrays fail: 'Unsupported codec: numcodecs.shuffle'. Confirmed codec chain on /combined/AWI_PISM1/exp02/ligroundf (float32): bytes(little) -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). GDAL v3 codec dispatch lacks standalone numcodecs.shuffle (impl EXISTS but only wired into the zarr_v2 path via ZarrGetShuffleDecompressor) and likely numcodecs.zlib (alias to existing zlib/gzip). Errors now repeat per-array instead of aborting. Many data vars affected (acabf, lithk, topg, vel* ...). Pattern: v2->v3 converted store using numcodecs.* namespace; v3 dispatch built around core v3 names.",
+      "notes": "crs 0-D extent FIXED. Data arrays use bytes -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). Even: these are 'unsupported currently by the GDAL Zarr v3 implementation (and are non-standard Zarr v3 codecs)' and 'will not be worked around for now.' numcodecs.* are numcodecs-namespaced EXTENSIONS, not core Zarr v3 codecs (same family as pcodec). Standalone shuffle impl exists but only in the zarr_v2 path; wiring it into v3 would mean GDAL chasing the numcodecs extension namespace - a scope decision declined. This is a STORE-SIDE conformance issue (v2->v3 conversion emitting non-standard codecs), not a GDAL gap. Compare era5_weatherbench2 'wontfix'. Reproducer kept for conformance: /combined/AWI_PISM1/exp02/ligroundf.",
       "gdal_verified": true
     },
     {
@@ -344,10 +344,10 @@
       "region": "us-west-2",
       "format": "Icechunk v1 (config.yaml+refs/), Zarr v3",
       "is_icechunk": true,
-      "status": "GDAL: crs FIXED; data reads blocked on numcodecs.shuffle + numcodecs.zlib (v3 dispatch gap)",
-      "status_group": "probably_fixable",
+      "status": "GDAL: crs FIXED; data blocked on NON-STANDARD numcodecs.* codecs (WONTFIX upstream decision)",
+      "status_group": "bad",
       "gdal_verified": true,
-      "notes": "crs 0-D extent issue FIXED. Now data arrays fail: 'Unsupported codec: numcodecs.shuffle'. Confirmed codec chain on /combined/AWI_PISM1/exp02/ligroundf (float32): bytes(little) -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). GDAL v3 codec dispatch lacks standalone numcodecs.shuffle (impl EXISTS but only wired into the zarr_v2 path via ZarrGetShuffleDecompressor) and likely numcodecs.zlib (alias to existing zlib/gzip). Errors now repeat per-array instead of aborting. Many data vars affected (acabf, lithk, topg, vel* ...). Pattern: v2->v3 converted store using numcodecs.* namespace; v3 dispatch built around core v3 names."
+      "notes": "crs 0-D extent FIXED. Data arrays use bytes -> numcodecs.shuffle(elementsize:4) -> numcodecs.zlib(level:3). Even: these are 'unsupported currently by the GDAL Zarr v3 implementation (and are non-standard Zarr v3 codecs)' and 'will not be worked around for now.' numcodecs.* are numcodecs-namespaced EXTENSIONS, not core Zarr v3 codecs (same family as pcodec). Standalone shuffle impl exists but only in the zarr_v2 path; wiring it into v3 would mean GDAL chasing the numcodecs extension namespace - a scope decision declined. This is a STORE-SIDE conformance issue (v2->v3 conversion emitting non-standard codecs), not a GDAL gap. Compare era5_weatherbench2 'wontfix'. Reproducer kept for conformance: /combined/AWI_PISM1/exp02/ligroundf."
     },
     {
       "title": "Antarctica fast flow mask 50m (source.coop englacial demogorgn)",
@@ -364,6 +364,6 @@
   ],
   "conformance_notes": [
     "Icechunk writer skew: 'ic-0.3.16' (no public pip tag) wrote scalar-array manifests[0].extents=[{0,1}] instead of empty extents[]. Recent Icechunk writes empty. A conformance assertion: scalar (0-D) arrays MUST have empty manifest extents[]. GDAL Icechunk driver made tolerant of the non-empty case (2026-06).",
-    "GDAL Zarr v3 codec dispatch is built around CORE v3 codec names (bytes, blosc, gzip, zstd, crc32c, sharding_indexed). v2->v3 converted Icechunk stores declare codecs under the numcodecs.* namespace (numcodecs.shuffle, numcodecs.zlib, likely numcodecs.delta/fixedscaleoffset/quantize). Standalone shuffle IS implemented (zarr_filters.cpp, ZarrGetShuffle{Compressor,Decompressor}) but only consumed in zarr_v2_array.cpp. ROBUST FIX: handle the numcodecs.* prefix as a family in the v3 dispatch, mapping to existing implementations; shuffle must be inserted as a bytes->bytes filter at the correct pipeline position (between the bytes codec and the compressor), reading configuration.elementsize (default 4). Reproducer: ismip6 icechunk-ais /combined/AWI_PISM1/exp02/ligroundf."
+    "CODEC STANDARDS vs ADOPTION (the through-line of this whole investigation). GDAL's Zarr v3 implementation supports CORE v3 codecs only: bytes, blosc, gzip, zstd, crc32c, sharding_indexed. Everything else seen here - pcodec, numcodecs.shuffle, numcodecs.zlib, numcodecs.delta, ... - is a NON-CORE codec declared via the numcodecs-zarr3 compatibility shim (zarr.codecs.numcodecs). Three facts hold simultaneously, keep them distinct: (1) SPEC STATUS: these are non-core/non-standard Zarr v3 codecs. (2) READER BEHAVIOUR: a core-only reader (current GDAL v3) will not decode them and reports 'Unsupported codec' / 'codec not available'; this is CORRECT w.r.t. the spec. Even Rouault declined to work around them for GDAL for now, even where a compatible impl exists in the v2 path (shuffle) - out of scope. (3) ADOPTION: some of these - pcodec especially - are in HEAVY real-world use in the xarray/zarr community (e.g. Earthmover ERA5). Non-standard does NOT mean illegitimate or rare. PRACTICAL CONSEQUENCE: stores using non-core codecs are readable, just not by a core-spec reader. They belong to numcodecs-aware readers: zarr-python, or Rust readers built with the codec feature (zarrs/zr lineage, which has a pcodec feature). This is exactly the GDAL/vapour path vs Rust/zr path split: pcodec's popularity is WHY the Rust-backed path matters. SEVERITIES within the non-core family: numcodecs.shuffle is non-core BUT a compatible impl exists in GDAL's v2 path (one barrier: scope). pcodec is non-core AND unimplemented in GDAL (two barriers: scope + no algorithm). Both are unsupported while the 'no non-standard codecs' scope decision stands. CONFORMANCE ASSERTION for a shared suite: a store targeting maximal interoperability should use core v3 codecs; v2->v3 conversion that emits numcodecs.* yields stores that core-spec readers cannot read - a known, documentable trade-off, not a reader bug."
   ]
 }
