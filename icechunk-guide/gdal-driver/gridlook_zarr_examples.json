@@ -6,16 +6,19 @@
     "status_group/status are gridlook's results (JS/zarrita/CORS-sensitive); GDAL may differ (no CORS constraint, different codec support).",
     "is_icechunk is a heuristic (format text or .icechunk url or icechunk root layout).",
     "For Icechunk entries, the GDAL connection name is the directory (bare store root); see the companion guide.",
-    "source.coop URLs are https (use /vsicurl/); s3:// dynamical/earthmover URLs use /vsis3/ with region + AWS_NO_SIGN_REQUEST."
+    "source.coop URLs are https (use /vsicurl/); s3:// dynamical/earthmover URLs use /vsis3/ with region + AWS_NO_SIGN_REQUEST.",
+    "source.coop buckets encode the region in the host (e.g. us-west-2.opendata.source.coop) but you STILL must pass --config AWS_REGION us-west-2; GDAL does not parse region from the host.",
+    "entries with gdal_verified=true were tested against GDAL's Icechunk driver directly (2026-06-11); others carry gridlook/browser status only."
   ],
   "counts": {
-    "total": 35,
-    "icechunk": 24,
+    "total": 37,
+    "icechunk": 26,
     "by_status_group": {
-      "good": 21,
-      "probably_fixable": 7,
+      "good": 22,
+      "probably_fixable": 8,
       "bad": 7
-    }
+    },
+    "gdal_verified": 2
   },
   "datasets": [
     {
@@ -332,6 +335,30 @@
       "status_group": "bad",
       "is_icechunk": false,
       "notes": ""
+    },
+    {
+      "title": "ISMIP6 AIS (source.coop englacial)",
+      "url": "https://us-west-2.opendata.source.coop/englacial/ismip6/icechunk-ais",
+      "vsis3": "/vsis3/us-west-2.opendata.source.coop/englacial/ismip6/icechunk-ais",
+      "region": "us-west-2",
+      "format": "Icechunk v1 (config.yaml+refs/), Zarr v3",
+      "is_icechunk": true,
+      "status": "GDAL: ABORTS open - crs 0-D manifest extent dim-count",
+      "status_group": "probably_fixable",
+      "gdal_verified": true,
+      "notes": "v1 layout (config.yaml, refs/). gdal mdim info aborts: array .../ctrl_proj_std/crs 'manifest extents has not expected dimension count'. Suspected 0-D CF/GeoZarr grid-mapping container; one bad var aborts whole open. SHAPE CONFIRMATION PENDING."
+    },
+    {
+      "title": "Antarctica fast flow mask 50m (source.coop englacial demogorgn)",
+      "url": "https://us-west-2.opendata.source.coop/englacial/demogorgn/icechunk/antarctica_fast_flow_mask_50m.icechunk",
+      "vsis3": "/vsis3/us-west-2.opendata.source.coop/englacial/demogorgn/icechunk/antarctica_fast_flow_mask_50m.icechunk",
+      "region": "us-west-2",
+      "format": "Icechunk, Zarr v3",
+      "is_icechunk": true,
+      "status": "GDAL: opens cleanly (mdim info full tree)",
+      "status_group": "good",
+      "gdal_verified": true,
+      "notes": "CONFIRMED in GDAL Icechunk driver. CURVILINEAR: lat & lon are 2D (y,x) 12445^2 geolocation arrays; x,y are 1D projected axes; fast_flow_mask Int64 blosc/zstd. No crs variable (so does NOT hit the ISMIP6 abort). gdalinfo subdataset open: re-run on ONE line with --config; earlier 403 was shell line-continuation dropping --config."
     }
   ]
 }
