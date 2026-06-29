@@ -9,6 +9,7 @@ Coiled handles provisioning the cloud VM (AWS/GCP), synchronising your local pro
 1. Install the Coiled CLI tool locally:
    ```bash
    pip install coiled
+   pip install mutagen ## needed for use of --sync which is bi-directional for files
    ```
 2. Log in and authenticate your cloud account:
    ```bash
