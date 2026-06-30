@@ -33,12 +33,20 @@ A 2×2 keeps the axes honest:
 
 |                         | **Transport (Axis A)**                              | **CF decode / georeferencing (Axis B)**                  |
 | ----------------------- | --------------------------------------------------- | -------------------------------------------------------- |
-| **GDAL**                | netCDF driver fakes mmap via `userfaultfd` → seccomp wall; HDF5/ROS3 driver does not | netCDF driver = CF-aware (geo OK); HDF5 driver = CF-blind (geo lost) |
+| **GDAL**                | netCDF driver fakes mmap via `userfaultfd` → seccomp wall; HDF5/ROS3 driver does not | netCDF driver = CF-aware; **mdim driver = CF-aware (+ infers affine/CRS)**; classic HDF5 driver = CF-blind |
 | **Python (xarray)**     | fsspec hands decoder a file-like object → clean, container-safe | `h5py` raw = CF-blind; `xarray.decode_cf` = CF-aware     |
 
 Notice the symmetry in the right column: **both** stacks have a CF-aware path and
 a CF-blind path. The georeferencing problem is not GDAL's; it's a property of
 *which decoder you pick* in either ecosystem.
+
+> **Refinement (see "Axis B, refined" below).** The first cut of this table is a
+> little unfair to GDAL: it conflated "the classic HDF5 raster driver" (genuinely
+> CF-blind) with "GDAL's only non-netCDF reader," and missed the
+> **multidimensional (`mdim`) model**, which *is* CF-aware over HDF5 — and which
+> does something stronger than xarray's coordinate-*preservation*: it performs
+> coordinate-*inference* (regular-spacing detection → affine collapse, CRS
+> synthesis) when projecting the N-D model down to the classic 2-D one.
 
 ---
 
@@ -150,8 +158,12 @@ Different layer → different fragility.
    `/vsimem` is itself virtual and does **not** reliably satisfy the driver —
    download to a real `tempfile(fileext=".nc")`, not `/vsimem`.
 3. **`GDAL_SKIP=netCDF` → HDF5 driver.** Reads `/vsi`/S3 directly, no
-   `userfaultfd`. *But forfeits CF georeferencing* (Axis B) — you hand-build the
-   geotransform, SRS, scale/offset, crop. Usually not worth it.
+   `userfaultfd`. *But the classic HDF5 driver forfeits CF georeferencing*
+   (Axis B) — you hand-build geotransform, SRS, scale/offset, crop. Usually not
+   worth it. *(The **mdim** driver over the same file is CF-aware — see "Axis B,
+   refined" — so an mdim/`AsClassicDataset()` route may keep georeferencing while
+   still avoiding the netCDF driver; worth testing whether it also avoids
+   `userfaultfd`.)*
 4. **Reference / Zarr path.** No netCDF driver in the loop at all → Axis A simply
    does not arise. (See convergence section.)
 
@@ -214,6 +226,120 @@ So the Python equivalents are:
 The lesson: **georeferencing is never "in the format."** It's in whoever decodes
 CF. GDAL puts that decoder in a *driver*; Python puts it in *xarray*. Neither raw
 HDF5 nor raw Zarr is geospatial on its own.
+
+---
+
+## Axis B, refined: the multidimensional model and the `mdim → classic` projection
+
+The two-driver framing above (CF-aware netCDF driver vs CF-blind HDF5 driver) is
+correct but **incomplete**, and the gap matters. GDAL has a *third* reader for
+these files: the **multidimensional model** (`gdal mdim`, the
+`GDALGroup`/`GDALMDArray` C++ API). The multidim driver over HDF5/netCDF **is
+CF-aware** — it reads the full coordinate model: dimensions, indexing
+(coordinate) variables, attributes, `grid_mapping`, per-array spatial reference.
+So the honest statement is not "GDAL's non-netCDF reader is CF-blind"; it's "the
+*classic HDF5 raster* driver is CF-blind, but the *multidim* driver is GDAL's own
+`decode_cf`, in C, over `/vsi`."
+
+There are therefore **three** GDAL readers, not two:
+
+| GDAL reader                         | Dim  | CF-aware? | What it gives you                                   |
+| ----------------------------------- | ---- | --------- | --------------------------------------------------- |
+| classic **netCDF** driver           | 2-D  | yes       | geotransform + SRS + unscale, `sd_name` subdatasets |
+| classic **HDF5** driver             | 2-D  | **no**    | raw arrays, HDF5-path subdatasets, no geo           |
+| **multidim** driver (`mdim`)        | N-D  | yes       | full coordinate model; `AsClassicDataset()` bridge  |
+
+### mdim does coordinate *inference*, not just coordinate *preservation*
+
+This is the part where the "xarray is ahead on the multidim model" intuition
+needs qualifying. xarray reads the coordinate arrays and **keeps them as-is** —
+it preserves the model and leaves "is this a regular grid I can warp?" to a
+downstream layer (`rioxarray`, or the user). GDAL's `mdim → classic` bridge
+(`GDALMDArray::AsClassicDataset()`) does something more active: when it projects
+the N-D array down to a classic 2-D georeferenced dataset, it **analyses** the
+coordinate variables —
+
+- **Regular-spacing detection.** Are the indexing variables evenly spaced? If so,
+  collapse them to an **affine geotransform** (the classic 6-coefficient model).
+- **CRS synthesis.** Read `grid_mapping` / CF coordinate semantics → attach a real
+  `OGRSpatialReference`.
+- **Fallback to geolocation / GCPs** when the coordinates are *not* affine-reducible.
+
+So mdim isn't merely a CF reader; it's a CF reader **wired directly into GDAL's
+warp/reproject/CRS machinery**, and the bridge performs the georeferencing
+*inference* — regular-vs-irregular, affine-collapse, projection identification —
+that is the genuinely hard part of making a dataset projectable. That inference,
+handed straight to two decades of warp engine, is something the Python side has
+to assemble from separate pieces (`cf_xarray` + `rioxarray` + a warper).
+
+### The honest boundary (where it's *not* a stronger basis)
+
+The affine collapse only works **when the coordinate model admits it**. Regular
+lon/lat grids (OISST) collapse cleanly. The cases that *don't*:
+
+- **Curvilinear / swath** grids (2-D lon & lat, e.g. many L2 products) — no affine.
+- **Gaussian latitudes** and other non-uniform spacings — not evenly spaced.
+- **0/360 seam and antimeridian** framings — the very cases the warp-extent work
+  in this thread is about; affine in principle, but the *projection* of them is
+  where `SuggestedWarpOutput` falls down.
+
+For those, GDAL falls back to geolocation arrays / GCPs (messier), and xarray's
+"just keep the coordinates" is arguably the more honest representation. So the
+claim is bounded: **when the coordinate model admits an affine reduction, the
+mdim path both detects that and feeds it to the strongest warp engine available
+— and that is a large, common, currently-underexploited class.** It is not "mdim
+is always the stronger basis."
+
+### Why this is a forward axis
+
+The `mdim ↔ classic` relations getting richer — more affine-collapse heuristics,
+better CRS inference from CF, the seam handling actively being improved upstream
+— **compounds directly** with the warp/reproject stack. Every improvement to the
+inference makes a larger class of multidim data directly projectable through
+GDAL's mature 2-D machinery. The Python ecosystem reaches the same destination by
+composing independent packages; GDAL reaches it by deepening one model's
+relationship to another inside a single framework with the warp engine already
+attached. That integration is the opportunity.
+
+---
+
+## Aside: VSI is a stronger storage framework than the seccomp episode suggests
+
+The Axis A story makes VSI look like the fragile party (it's the one that needs
+`userfaultfd`). That impression is unfair and worth correcting, because the
+seccomp wall is a **single narrow interaction** — one driver's mmap-fake against
+one container default — not a verdict on the framework.
+
+As an *object-storage abstraction*, **VSI is stronger than fsspec** (and broader,
+if less Rust-clean, than `object_store`):
+
+- **Uniform C API across backends** — `/vsicurl`, `/vsis3`, `/vsigs`, `/vsiaz`,
+  `/vsioss`, `/vsiswift`, `/vsihdfs` — one interface, consistent semantics.
+- **Composable, chained virtual filesystems** — `/vsizip//vsis3/bucket/a.zip/inner.tif`,
+  `/vsigzip/`, `/vsitar/`, `/vsisparse/`. fsspec has chaining but less uniformly;
+  VSI's is first-class and old.
+- **One coherent config landscape** — endpoint overrides, virtual-vs-path-style
+  addressing, signing, requester-pays, retry, region — resolved consistently
+  across backends rather than reimplemented per-filesystem.
+- **Block-range caching** and partial-read optimization tuned for geospatial
+  access patterns (COG overviews, chunk reads) over years.
+- **Language-agnostic at the C ABI** — every binding (R `gdalraster`/`vapour`,
+  Python `osgeo`, Rust, QGIS, …) inherits the whole thing for free. fsspec is
+  Python-only; `object_store` is Rust-first and narrower/newer.
+
+So the balanced picture is **not** "xarray ahead, GDAL behind." It's two
+*different* strengths:
+
+| Strength                                              | Ahead   |
+| ----------------------------------------------------- | ------- |
+| Userspace transport injection (seccomp-clean remote)  | xarray  |
+| Treating multidim as the *native* working model       | xarray  |
+| Storage abstraction (VSI: uniform, chained, multi-lang)| GDAL    |
+| Coordinate-model → projectable-grid *inference* + warp | GDAL    |
+
+And the ref/Zarr convergence below is precisely where these **compose** rather
+than compete: VSI-grade storage + mdim coordinate analysis + Zarr-clean transport
++ the warp stack, in one pipeline.
 
 ---
 
@@ -390,6 +516,29 @@ former, harvest-to-refs first is mandatory, not optional.
 it — i.e. both axes resolved, and the numbers match the trusted netCDF-driver
 path.
 
+### E8 — What does mdim *infer* that xarray leaves raw?
+*Goal:* make the "coordinate inference vs preservation" claim concrete, and find
+the affine-collapse boundary empirically.
+```r
+# Open OISST (single file, then an mdim mosaic of N days) via the multidim API.
+# Inspect what GDAL infers when bridging to classic:
+#   - did the lon/lat indexing vars collapse to a clean affine geotransform?
+#   - what SRS string did it synthesize from grid_mapping / CF?
+#   - does AsClassicDataset() succeed, or fall back to geolocation/GCPs?
+# gdalraster / gdal CLI:  gdal mdim info ...   ;  AsClassicDataset path
+```
+```python
+# Same file via xarray: you get coordinate ARRAYS back, but no geotransform/CRS
+# until rioxarray/cf_xarray. Tabulate: GDAL infers {affine, CRS} vs xarray keeps
+# {coord arrays}. Then deliberately try a NON-affine case (a curvilinear/swath
+# product, or fake an irregular lat) and watch GDAL fall back — that's the boundary.
+```
+*Proves:* the bounded claim — for regular grids, mdim→classic *derives* a
+projectable affine+CRS (and hands it to the warp engine) where xarray preserves
+raw coordinates; for curvilinear/irregular it falls back, and xarray's
+representation is then the more honest one. Locates exactly where GDAL's
+inference is the stronger basis and where it isn't.
+
 ---
 
 ## Open questions / things to verify (don't assert until checked)
@@ -417,3 +566,33 @@ path.
   `tempfile(fileext=".nc")` satisfies the netCDF driver and `/vsimem` is suspect;
   worth a definitive note on *why* (`/vsimem` being itself virtual) if it ever
   needs re-litigating.
+- **mdim `AsClassicDataset()` affine-collapse coverage.** Verify against the
+  source what heuristics the bridge actually applies (regular-spacing tolerance,
+  CRS synthesis from which CF attributes, geolocation-array fallback conditions).
+  The "coordinate inference, not preservation" claim is right in shape, but the
+  exact inference rules are the part to read before citing — and they're a moving
+  target as the mdim↔classic relations get richer upstream.
+
+---
+
+## Closing synthesis: where the strengths compose
+
+The headline correction to the first draft: this is **not** an "xarray ahead,
+GDAL behind" story. It's four distinct strengths split across two ecosystems —
+
+- xarray ahead on **userspace transport injection** (the seccomp-clean remote
+  read) and on **multidim as the native working model**;
+- GDAL ahead on the **storage abstraction** (VSI: uniform, chained, language-
+  agnostic) and on **coordinate-model → projectable-grid inference** wired to a
+  mature warp engine.
+
+The reference/Zarr convergence is the place these stop competing and start
+composing: **VSI-grade storage** moves the bytes, **mdim coordinate analysis**
+derives the affine + CRS where the model allows, the **Zarr/ref layer** makes the
+transport universally container-clean and carries the CF metadata, and the **warp
+stack** projects the result. R harvests (rhdf5 / `get-refs`, your prior art),
+Python consumes (xarray + Dask, the native distributed engine Coiled actually
+provides), the ref store is the contract between them.
+
+That composition — not either ecosystem winning — is the richer future this whole
+Coiled detour kept pointing at.
