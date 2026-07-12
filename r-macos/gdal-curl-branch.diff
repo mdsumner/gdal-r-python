@@ -1,0 +1,92 @@
+diff --git a/.github/workflows/cook.yml b/.github/workflows/cook.yml
+index 19bdf43..755574a 100644
+--- a/.github/workflows/cook.yml
++++ b/.github/workflows/cook.yml
+@@ -33,7 +33,7 @@ jobs:
+     strategy:
+       fail-fast: false
+       matrix:
+-        os: [ 'macos-13', 'macos-14' ]
++        os: [ 'macos-15-intel', 'macos-14' ]
+ 
+     steps:
+       - uses: actions/checkout@v2
+@@ -112,4 +112,4 @@ jobs:
+           name: dist-darwin${{ env.OS_VER }}-${{ env.ARCH }}
+           path: dist
+           compression-level: 0
+-          retention-days: 3
++          retention-days: 14
+diff --git a/recipes/curl b/recipes/curl
+new file mode 100644
+index 0000000..c31c4b3
+--- /dev/null
++++ b/recipes/curl
+@@ -0,0 +1,8 @@
++Package: curl
++Version: 8.20.0
++Depends: pkgconfig, openssl
++Source-URL: https://curl.se/download/curl-${ver}.tar.gz
++Source-SHA256: fc5819cad3f9f5482669adcdc49a782c15f36d2a0715b395b06d9173593d2dc0
++#Note: static libcurl so that GDAL >= 3.9 (needs curl >= 7.68) does not depend on the SDK/system curl which is too old on Big Sur and older targets
++#Note: TLS backend is the openssl recipe (curl 8.15+ removed Secure Transport); macOS ships CA certs at /etc/ssl/cert.pem matching the openssl recipe openssldir
++Configure: --with-openssl --with-ca-bundle=/etc/ssl/cert.pem --without-libpsl --without-brotli --without-zstd --without-nghttp2 --without-libidn2 --disable-ldap --disable-ldaps
+diff --git a/recipes/gdal b/recipes/gdal
+index bb7bcc8..2b14827 100644
+--- a/recipes/gdal
++++ b/recipes/gdal
+@@ -1,9 +1,9 @@
+ Package: gdal
+-Version: 3.8.5
+-Depends: pkgconfig, xz, libpq, proj, openjpeg, libwebp, libgeotiff, freexl, sqlite3, expat, hdf4, hdf5, szip, netcdf, geos, unixodbc, blosc, zstd, openssl, pcre2
++Version: 3.12.4
++Depends: pkgconfig, xz, libpq, proj, openjpeg, libwebp, libgeotiff, freexl, sqlite3, expat, hdf4, hdf5, szip, netcdf, geos, unixodbc, blosc, zstd, openssl, pcre2, curl
+ Source-URL: https://github.com/OSGeo/gdal/releases/download/v${ver}/gdal-${ver}.tar.gz
+-Source-SHA256: 0c865c7931c7e9bb4832f50fb53aec8676cbbaccd6e55945011b737fb89a49c2
++Source-SHA256: 68844ae29557b7efae4292c3b4cb3a3b8a79d14b765b89c5a7b17cbae7fa715a
+ Build-system: cmake
+ #Note: their CFLAGS/LIBS detection is broken as usual, requires flags to be manually passed from pkg-config
+-Configure: -DCMAKE_EXE_LINKER_FLAGS="`pkg-config --static --libs libpq libwebp blosc netcdf`" -DCMAKE_C_FLAGS="`pkg-config --cflags libpq libwebp blosc netcdf`" -DCMAKE_CXX_FLAGS="`pkg-config --cflags libpq libwebp blosc netcdf`" -DGDAL_ENABLE_HDF5_GLOBAL_LOCK=NO -DGDAL_USE_OPENCL=NO -DIconv_LIBRARY=-liconv
++Configure: -DCMAKE_EXE_LINKER_FLAGS="`pkg-config --static --libs libpq libwebp blosc netcdf libcurl`" -DCMAKE_C_FLAGS="`pkg-config --cflags libpq libwebp blosc netcdf libcurl`" -DCMAKE_CXX_FLAGS="`pkg-config --cflags libpq libwebp blosc netcdf libcurl`" -DGDAL_ENABLE_HDF5_GLOBAL_LOCK=NO -DGDAL_USE_OPENCL=NO -DIconv_LIBRARY=-liconv -DCURL_INCLUDE_DIR=/${prefix}/include -DCURL_LIBRARY=/${prefix}/lib/libcurl.a
+ Postinstall: sed -E 's:[^ ]+/lib([^ ]+)[.]tbd:-l\1:g' < ${prefix}/lib/pkgconfig/gdal.pc > ${prefix}/lib/pkgconfig/gdal.pc.1 && mv ${prefix}/lib/pkgconfig/gdal.pc.1 ${prefix}/lib/pkgconfig/gdal.pc
+diff --git a/recipes/gdal.patch b/recipes/gdal.patch
+index 3dd4b81..f63c274 100644
+--- a/recipes/gdal.patch
++++ b/recipes/gdal.patch
+@@ -1,6 +1,6 @@
+-diff -ru gdal-3.10.1/cmake/template/gdal-config.in gdal-3.10.1-2/cmake/template/gdal-config.in
+---- gdal-3.10.1/cmake/template/gdal-config.in	2025-01-09 03:54:05
+-+++ gdal-3.10.1-2/cmake/template/gdal-config.in	2025-02-08 23:28:02
++diff -ru gdal-3.12.4/cmake/template/gdal-config.in gdal-3.12.4/cmake/template/gdal-config.in
++--- gdal-3.12.4/cmake/template/gdal-config.in	2026-07-12 03:07:46.827923176 +0000
+++++ gdal-3.12.4-1/cmake/template/gdal-config.in	2026-07-12 03:07:46.834447810 +0000
+ @@ -1,5 +1,5 @@
+  #!/bin/sh
+ -CONFIG_LIBS="@CONFIG_LIBS@"
+@@ -8,18 +8,18 @@ diff -ru gdal-3.10.1/cmake/template/gdal-config.in gdal-3.10.1-2/cmake/template/
+  CONFIG_DEP_LIBS="@CONFIG_DEP_LIBS@"
+  CONFIG_PREFIX="@CONFIG_PREFIX@"
+  CONFIG_CFLAGS="@CONFIG_CFLAGS@"
+-diff -ru gdal-3.10.1/cmake/template/gdal.pc.in gdal-3.10.1-2/cmake/template/gdal.pc.in
+---- gdal-3.10.1/cmake/template/gdal.pc.in	2025-01-09 03:54:05
+-+++ gdal-3.10.1-2/cmake/template/gdal.pc.in	2025-02-08 23:27:09
++diff -ru gdal-3.12.4/cmake/template/gdal.pc.in gdal-3.12.4/cmake/template/gdal.pc.in
++--- gdal-3.12.4/cmake/template/gdal.pc.in	2026-07-12 03:07:46.830095409 +0000
+++++ gdal-3.12.4-1/cmake/template/gdal.pc.in	2026-07-12 03:07:46.834447810 +0000
+ @@ -15,3 +15,4 @@
+  Libs: ${CONFIG_INST_LIBS}
+  Libs.private: @CONFIG_DEP_LIBS@
+  Cflags: ${CONFIG_INST_CFLAGS}
+-+Requires.private: libpq libtiff-4 netcdf
+-diff -ru gdal-3.10.1/frmts/hdf5/CMakeLists.txt gdal-3.10.1-2/frmts/hdf5/CMakeLists.txt
+---- gdal-3.10.1/frmts/hdf5/CMakeLists.txt	2025-01-09 03:54:06
+-+++ gdal-3.10.1-2/frmts/hdf5/CMakeLists.txt	2025-02-08 22:45:07
+-@@ -94,7 +94,9 @@
+++Requires.private: libpq libtiff-4 netcdf libcurl
++diff -ru gdal-3.12.4/frmts/hdf5/CMakeLists.txt gdal-3.12.4/frmts/hdf5/CMakeLists.txt
++--- gdal-3.12.4/frmts/hdf5/CMakeLists.txt	2026-07-12 03:07:46.831703978 +0000
+++++ gdal-3.12.4-1/frmts/hdf5/CMakeLists.txt	2026-07-12 03:07:47.072998186 +0000
++@@ -115,7 +115,9 @@
+    target_compile_definitions(gdal_HDF5 PRIVATE -DWIN32)
+  endif ()
+  target_include_directories(gdal_HDF5 SYSTEM PRIVATE ${HDF5_INCLUDE_DIRS})
