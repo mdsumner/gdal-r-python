@@ -1,0 +1,16 @@
+# Python >= 3.12 required (lazycogs). GDAL Python bindings must match your
+# installed libgdal: pip install "gdal==$(gdal-config --version)"
+# (or use a conda-forge / system package).
+lazycogs>=0.7.0
+odc-stac>=0.5.3
+odc-geo>=0.5.3
+rustac>=0.9.13
+pystac>=1.13
+rasterio>=1.4
+rioxarray>=0.17
+xarray>=2026.2.0
+dask>=2026.3.0
+netcdf4
+numpy>=2
+affine
+pyproj>=3.7
