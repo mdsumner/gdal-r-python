@@ -372,3 +372,8 @@ The proposed design doesn't replace any of these — it provides a unifying dime
 **Community adoption.** The R spatial community has significant inertia around terra and stars. A new package needs to demonstrate clear value-add (multi-file lazy access, named-dimension broadcasting) without requiring users to abandon their existing tools.
 
 **Arrow dependency weight.** If Arrow is adopted as the chunk representation, the dependency strategy needs care. The full `arrow` R package pulls in Arrow C++ (~50MB). nanoarrow is lightweight (~1MB, zero dependencies) but has narrower functionality. A pragmatic path: nanoarrow in the core for zero-copy interchange and basic array handling, with the full arrow package as a suggested dependency for compute kernels and compression codecs. This parallels how dbplyr core is lightweight but gains power when connected to DuckDB or Spark.
+
+
+## See also
+
+this exploration within a raadtools context: https://github.com/AustralianAntarcticDivision/raadtools/issues/145
